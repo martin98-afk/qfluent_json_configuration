@@ -1,0 +1,1 @@
+pyinstaller --onefile --manifest app.manifest --windowed --add-data "预制模型;预制模型" --add-data "icons;icons" --add-data "default.yaml;./" --add-data "versions.json;./" -i icons/logo.png main.py

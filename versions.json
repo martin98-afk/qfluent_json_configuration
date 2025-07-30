@@ -1,0 +1,219 @@
+[
+  {
+    "version": "1.2.1",
+    "publishDate": "2025-07-14 14:52",
+    "forceUpdate": true,
+    "publishNotes": [
+      "feat(application): 添加模型上传与复制功能，优化模型参数管理",
+      "- 新增上传模型和复制模型功能，支持选择运行环境",
+      "- 添加模型运行功能，新增至组件运行的快捷菜单选项",
+      "- 完善模型绑定逻辑，支持多选配置和参数更新",
+      "- 优化 UI 样式，改进下拉菜单和列表显示效果",
+      "- 更新 default.yaml 配置，添加模型相关接口路径"
+    ]
+  },{
+    "version": "1.1.8",
+    "publishDate": "2025-07-08 19:14",
+    "forceUpdate": true,
+    "publishNotes": [
+      "feat(parameter): 新增多选下拉框参数类型",
+      "- 在 ConfigurableTreeWidgetItem 中添加了对多选下拉框的支持",
+      "- 在 default.yaml 中定义了多选下拉框的配置结构",
+      "- 在 DiFlowParams 中增加了对多选下拉框类型的支持",
+      "- 在 JsonEditor 中添加了对多选下拉框参数的处理逻辑",
+      "- 新增了 MultiSelectComboBox 组件用于实现多选下拉框功能"
+    ]
+  },{
+    "version": "1.1.7",
+    "publishDate": "2025-07-07 21:56",
+    "forceUpdate": true,
+    "publishNotes": [
+      "feat(config): 优化配置文件加载和处理",
+      "- 新增 custom_tree_item.py 文件，实现自定义树形控件项",
+      "- 修改 draggable_tree_widget.py，支持可拖拽和不可拖拽两种模式",
+      "- 重构 load_config.py，使用 ruamel.yaml 替代内置 yaml 模块",
+      "- 移除 nacos_config.py 中的 yaml 导入",
+      "- 更新 requirements.txt，添加 ruamel.yaml 和 deepdiff 依赖"
+    ]
+  },{
+    "version": "1.1.6",
+    "publishDate": "2025-07-07 16:12",
+    "forceUpdate": true,
+    "publishNotes": [
+      "refactor(application): 重构 JSON编辑器和相关组件",
+      "- 优化了 DraggableListWidget、DraggableTabBar 和 DraggableTreeWidget 组件",
+      "- 新增 ConfigurableTreeWidgetItem 类以更好地处理配置项",
+      "- 改进了模型绑定和参数编辑的逻辑",
+      "- 统一了配置文件的处理方式",
+      "- 优化了用户界面交互和视觉效果"
+    ]
+  },{
+    "version": "1.1.5",
+    "publishDate": "2025-07-02 17:57",
+    "forceUpdate": true,
+    "publishNotes": [
+      "feat(nacos): 实现 Nacos 配置管理功能",
+      "- 新增 Nacos 配置类，支持多种配置格式的读写- 添加服务路径获取和更新功能",
+      "- 实现服务列表展示和配置管理对话框",
+      "- 优化 JSON 编辑器，支持高级滑块编辑",
+      "- 重构 API 工具加载逻辑，支持 Nacos 配置"
+    ]
+  },{
+    "version": "1.1.4",
+    "publishDate": "2025-07-02 10:44",
+    "forceUpdate": true,
+    "publishNotes": [
+      "feat(json_editor): 优化模型选择按钮和组合框",
+      "- 为模型选择按钮添加工具提示，提供更清晰的用户引导",
+      "- 在组合框中添加禁止滚轮事件，防止意外更改",
+      "- 优化组合框选择后的逻辑处理，提高代码可读性和性能"
+    ]
+  },{
+    "version": "1.1.3",
+    "publishDate": "2025-07-01 14:44",
+    "forceUpdate": true,
+    "publishNotes": [
+      "feat(default): 更新版本控制至 GitCode",
+      "- 将版本控制方式从 GitHub 改为 GitCode",
+      "- 新增 GitCode 项目配置和令牌",
+      "- 添加 GitCode API 请求实现",
+      "- 修改更新检查器以支持 GitCode"
+    ]
+  },{
+    "version": "1.1.2",
+    "publishDate": "2025-07-01 11:18",
+    "forceUpdate": true,
+    "publishNotes": [
+      "feat(database): 优化模型绑定逻辑并添加异步加载支持",
+      "- 在 di_flow_params.py 中引入 get_unique_name 函数，用于处理参数名称重复问题",
+      "- 在 json_editor.py 中实现模型绑定的异步加载逻辑，提高用户体验",
+      "- 优化模型选择下拉菜单的显示效果，增加标题和居中显示",
+      "- 解决文档栏重命名后上传卡死问题",
+      "- 在 load_config.py 中实现 API 工具和数据库工具的并行加载，提高启动速度",
+      "- 在 utils.py 中添加 get_unique_name 函数，用于生成唯一名称"
+    ]
+  },{
+    "version": "1.1.1",
+    "publishDate": "2025-06-30 18:36",
+    "forceUpdate": true,
+    "publishNotes": [
+      "feat(database): 添加 PostgreSQL 数据库工具类",
+      "- 新增 DiFlow、DiFlowParams 和 DiFlowParamsModify 三个数据库工具类",
+      "- 实现了连接数据库、查询流程数据、修改参数等功能",
+      "- 添加了数据库连接配置到 default.yaml 文件中",
+      "- 删除了 application/__init__.py 中的冗余代码"
+    ]
+  },{
+    "version": "1.1.0",
+    "publishDate": "2025-06-27 10:14",
+    "forceUpdate": true,
+    "publishNotes": [
+      "feat(tools): 重构工具模块并添加新功能",
+      "- 重构 algorithm 和 api_service 模块，新增多个工具类",
+      "- 添加 CalcNormalRange 工具类，用于计算正常范围",
+      "- 更新 HistogramRangeSetDialog，使用新工具类替代原有逻辑",
+      "- 优化 JSONEditor 界面，添加新功能和改进菜单"
+    ]
+  },{
+    "version": "1.0.8",
+    "publishDate": "2025-06-25 10:45",
+    "forceUpdate": true,
+    "publishNotes": [
+      "refactor(service_test_dialog): 优化日志显示和搜索功能",
+      "- 添加滚动条样式，提升界面美观度",
+      "- 实现日志内容的 HTML 转换，支持格式化显示",
+      "- 优化日志搜索功能，支持多关键词高亮",
+      "- 修复了一些与 JSON 解析和 UI 渲染相关的小问题"
+    ]
+  },{
+    "version": "1.0.7",
+    "publishDate": "2025-06-24 9:53",
+    "forceUpdate": true,
+    "publishNotes": [
+      "feat(application): 添加 AI 智能划分功能,增强训练数据选择算法",
+      "- 引入 Jenks 自然间断点算法，实现自动划分功能",
+      "- 添加 AI 划分按钮和相关逻辑",
+      "- 优化 draggable lines，支持鼠标悬浮变实线",
+      "- 调整直方图范围设置对话框布局",
+      "- 更新依赖库：scipy、kneed、jenkspy",
+      "- 重构了 TrainDataSelect 类，增加了双向熵计算、K-means 聚类分析等新功能",
+      "- 改进了数据预处理和动态窗口权重衰减方法，提高了算法的准确性和鲁棒性",
+      "- 优化了状态机逻辑，能够更有效地识别高信息量时间段"
+    ]
+  },{
+    "version": "1.0.6",
+    "publishDate": "2025-06-22 11:51",
+    "forceUpdate": true,
+    "publishNotes": [
+      "refactor(application): 重构下载线程并更新项目配置",
+      "- 重构 DownloadThread 类，使用 requests替代 aiohttp，简化代码结构",
+      "- 更新项目配置，包括 Python SDK 和依赖库版本"
+    ]
+  },
+  {
+    "version": "1.0.5",
+    "publishDate": "2025-06-21 18:21",
+    "forceUpdate": true,
+    "publishNotes": [
+      "feat(application): 优化配置工具功能和界面,",
+      "- 添加版本号为 V2.0.1",
+      "- 全局设置双击间隔为 300 毫秒",
+      "- 应用程序级别设置 Fusion 样式\n- 移除配置设置对话框中的搜索功能\n- 优化直方图范围设置对话框的样式\n- 更新时间范围对话框，增加分组功能和改进交互\n-趋势分析对话框中移除不必要的提示信息\n- 更新检查器中优化版本更新提示界面\n- 历史版本对比对话框中调整界面布局和样式,"
+    ]
+  },
+  {
+    "version": "1.0.4",
+    "publishDate": "2025-06-19 18:43",
+    "forceUpdate": true,
+    "publishNotes": [
+      "1. 优化配置工具更新检查逻辑；2. 增加更新日志说明； 3. 下载取消程序卡死问题解决"
+    ]
+  },
+  {
+    "version": "1.0.3",
+    "publishDate": "2025-06-17 16:33",
+    "forceUpdate": true,
+    "publishNotes": [
+      "去除更新按钮，直接改成更新配置以及第一次打开时检查是否有版本更新，同时连接平台失败改为在状态栏和日志栏输出，不弹出错误框"
+    ]
+  },
+  {
+    "version": "1.0.2",
+    "publishDate": "2025-06-17 15:33",
+    "forceUpdate": true,
+    "publishNotes": [
+      "增加gitee版本更新方法"
+    ]
+  },
+  {
+    "version": "1.0.1",
+    "publishDate": "2025-06-17 14:45",
+    "forceUpdate": true,
+    "publishNotes": [
+      "测试版本更新效果"
+    ]
+  },
+  {
+    "version": "1.0.0",
+    "publishDate": "2025-06-17 14:31",
+    "forceUpdate": true,
+    "publishNotes": [
+      "feat(application): 添加版本更新功能并优化相关模块",
+      "- 新增 UpdateChecker 类，用于检查和执行版本更新",
+      "- 在主界面添加版本更新按钮",
+      "- 优化日志显示和处理逻辑",
+      "- 添加重新上线功能",
+      "- 修复一些 UI 相关的问题"
+    ]
+  },
+  {
+    "version": "0.9.0",
+    "publishDate": "2025-06-17 10:14",
+    "forceUpdate": true,
+    "publishNotes": [
+      "初始版本",
+      "1. 支持联网自动更新版本",
+      "2. 优化用户使用体验"
+    ]
+  }
+]
