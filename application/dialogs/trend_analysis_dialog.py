@@ -386,6 +386,7 @@ class TrendAnalysisDialog(QDialog):
         self.load_points_btn.setStyleSheet(get_button_style_sheet())
         self.load_points_btn.clicked.connect(self.add_tags)
         parameter_type.addWidget(self.load_points_btn)
+
         parameter_type.addStretch()
         # 简化标题与提示
         selected_header = QHBoxLayout()

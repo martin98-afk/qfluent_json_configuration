@@ -1102,7 +1102,6 @@ class JSONEditor(QWidget):
             return
 
         filename = get_file_name(path)
-
         # 文件名冲突处理
         if filename in self.open_files:
             box = MessageBox("文件已存在", f"文件“{filename}”已经打开，是否覆盖当前配置？", self)
@@ -1958,7 +1957,6 @@ class JSONEditor(QWidget):
 
     def _on_close(self, index: int):
         name = self.tab_bar.tabText(index)
-
         if hasattr(self, "is_same_as_file") and self.is_same_as_file(
                 name
         ):
@@ -1974,11 +1972,12 @@ class JSONEditor(QWidget):
             self.tab_bar.removeTab(index)
             self.close_file(name)
 
-
+        self.current_file = None
         # 如果没有标签自动创建新标签
         if self.tab_bar.count() == 0:
             self.new_config()
-        self.switch_to_file(self.tab_bar.tabText(self.tab_bar._currentIndex))
+        else:
+            self.switch_to_file(self.tab_bar.tabText(self.tab_bar._currentIndex))
 
     # 消息框
     def create_infobar(self, title: str, content: str = "", duration: int = 5000):
