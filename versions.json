@@ -1,5 +1,18 @@
 [
   {
+    "version": "1.2.5",
+    "publishDate": "2025-07-14 14:52",
+    "forceUpdate": true,
+    "publishNotes": [
+      "feat(model): 添加模型日志查看功能并优化配置导入",
+      "- 配置工具有qfluentwidgets工具包重构，优化整体使用体验",
+      "- 新增 ModelLogger 工具类，用于获取模型组件日志",
+      "- 实现组件日志查看功能，添加到右键菜单",
+      "- 优化配置导入流程，导入后自动重新加载树结构",
+      "- 调整运行模型功能，增加选择运行方式",
+      "- 优化 DPI 设置，提高高分辨率屏幕显示效果"
+    ]
+  },{
     "version": "1.2.1",
     "publishDate": "2025-07-14 14:52",
     "forceUpdate": true,

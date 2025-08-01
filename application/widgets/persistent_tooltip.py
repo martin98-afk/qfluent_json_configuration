@@ -22,7 +22,7 @@ class PersistentToolTip(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         self.label = QLabel("", self)
-        self.label.setWordWrap(True)  # 自动换行
+        # self.label.setWordWrap(True)  # 自动换行
         self.label.setStyleSheet("""
             QLabel {
                 background-color: #F9F9F9;

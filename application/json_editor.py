@@ -20,17 +20,16 @@ from PyQt5.QtCore import (
 from PyQt5.QtGui import QColor, QGuiApplication, QIcon, QFontMetrics, QDesktopServices
 from PyQt5.QtGui import QFont, QKeySequence
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QPushButton, QWidget, QMenu, QMessageBox, QSizePolicy,
+    QDialog, QVBoxLayout, QPushButton, QWidget, QMenu, QSizePolicy,
     QDesktopWidget, QStatusBar, QUndoStack, QAction, QLabel,
-    QWidgetAction, QListWidget, QListWidgetItem, QFrame
+    QWidgetAction, QListWidget, QListWidgetItem, QFrame, QTextEdit
 )
 from PyQt5.QtWidgets import (
     QFileDialog, QInputDialog, QShortcut, QAbstractItemView
 )
 from deepdiff import DeepDiff
-from loguru import logger
 from qfluentwidgets import FluentIcon as FIF, CommandBar, TabBar, SearchLineEdit, MessageBox, InfoBar, InfoBarPosition, \
-    InfoBarIcon, Dialog, PushButton
+    InfoBarIcon, PushButton, Dialog, PlainTextEdit, PrimaryPushButton, SubtitleLabel
 from qfluentwidgets import RoundMenu, Action
 
 from application.dialogs.histogram_range_set_dialog import IntervalPartitionDialog
@@ -56,7 +55,8 @@ from application.utils.utils import (
     get_icon,
     get_file_name,
     error_catcher_decorator,
-    get_button_style_sheet, get_unique_name, )
+    get_unique_name, )
+from application.widgets.component_log_message_box import LogMessageBox
 from application.widgets.copy_model_messagebox import CopyModelMessageBox
 from application.widgets.custom_input_messagebox import CustomMessageBox
 from application.widgets.custom_tree_item import ConfigurableTreeWidgetItem
@@ -116,6 +116,8 @@ class JSONEditor(QWidget):
 
         self.config = ParamConfigLoader(config_path)
         self.config.params_loaded.connect(self.on_config_loaded)
+        if self.current_file in self.model_bindings:
+            self.config.database_tools_loaded.connect(lambda: self.bind_model(self.model_bindings[self.current_file]))
         self.config.load_async()
 
     def on_config_loaded(self):
@@ -1214,6 +1216,7 @@ class JSONEditor(QWidget):
         QShortcut(QKeySequence("Ctrl+Z"), self, self.undo_action)
         QShortcut(QKeySequence("Ctrl+Y"), self, self.redo_action)
 
+    @error_catcher_decorator
     def on_tree_context_menu(self, pos: QPoint):
         # 获取当前项
         item = self.tree.itemAt(pos)
@@ -1237,7 +1240,10 @@ class JSONEditor(QWidget):
             menu.addAction(Action(FIF.DELETE, "删除参数", triggered=self.remove_param))
 
         if item and self.model_binding_prefix in full_path and len(full_path.split("/")) == 2:
-            menu.addAction(Action(FIF.PLAY, "运行至该组件", triggered=self.run_param))
+            menu.addSeparator()
+            menu.addAction(Action(FIF.PLAY, "运行该组件", triggered=lambda: self.run_param(run_type="2")))
+            menu.addAction(Action(FIF.PLAY, "运行至该组件", triggered=lambda: self.run_param(run_type="1")))
+            menu.addAction(Action(get_icon("日志"), "查看组件日志", triggered=self.show_component_logs))
 
         menu.addSeparator()
         # 视图操作作为一级菜单项
@@ -1441,7 +1447,7 @@ class JSONEditor(QWidget):
             model_match = re.findall(rf"{self.model_binding_prefix}(.+)", matched_key)
             if model_match:
                 model_name = model_match[0]
-                if model_name != self.model_bindings.get(self.current_file):
+                if model_name != self.model_bindings.get(self.current_file) or self.current_file not in self.model_binding_structures:
                     self.model_bindings[self.current_file] = model_name
                     worker = Worker(self.config.api_tools.get("di_flow_params"), self.model_binding_prefix,
                                     model_name)
@@ -1605,7 +1611,7 @@ class JSONEditor(QWidget):
             self.undo_stack.push(TreeEditCommand(self, old_state, f"删除参数 {param_name}"))
             self.show_status_message("已删除配置", "success")
 
-    def run_param(self):
+    def run_param(self, run_type: str = "1"):
         item = self.tree.currentItem()
         full_path = self.get_path_by_item(item)
         param_no = self.config.get_model_binding_node_no(full_path)
@@ -1619,9 +1625,23 @@ class JSONEditor(QWidget):
             flow_no,
             flow_json,
             flow_pic,
-            param_no
+            param_no,
+            run_type
         )
         self.create_successbar("开始运行模型！")
+
+    def show_component_logs(self):
+        item = self.tree.currentItem()
+        full_path = self.get_path_by_item(item)
+        param_no = self.config.get_model_binding_node_no(full_path)
+        log_content = self.config.api_tools.get("model_logger").call(param_no)
+
+        # 创建自定义对话框
+        dialog = LogMessageBox(log_content, parent=self)
+
+        # 显示对话框
+        dialog.exec()
+
 
     def load_history_menu(self):
         if not os.path.exists(HISTORY_PATH):

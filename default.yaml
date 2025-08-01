@@ -27,6 +27,9 @@ api-tools:
     model_execute:
       type: model-execute
       copy_path: /rest/di/flow/run
+    model_logger:
+      type: model-logger
+      log_path: /rest/di/flow/node/data
     service_list:
       type: services-list
       service_list_path: 

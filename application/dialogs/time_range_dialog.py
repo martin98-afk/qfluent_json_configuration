@@ -534,8 +534,7 @@ class TimeRangeDialog(QDialog):
             item.delete_signal.connect(self._delete_selected_region)
             item.edit_signal.connect(
                 lambda region: [
-                    self._manual_region(region[0], region[1]),
-                    self._delete_selected_region()
+                    self._manual_region(region[0], region[1], delete_select=True)
                 ]
             )
             self.plot.addItem(item)
@@ -620,8 +619,7 @@ class TimeRangeDialog(QDialog):
             item.delete_signal.connect(self._delete_selected_region)
             item.edit_signal.connect(
                 lambda region: [
-                    self._manual_region(region[0], region[1]),
-                    self._delete_selected_region(),
+                    self._manual_region(region[0], region[1], delete_select=True),
                 ]
             )
             self.plot.addItem(item)
@@ -674,7 +672,7 @@ class TimeRangeDialog(QDialog):
             return key, val
         return key, []
 
-    def _manual_region(self, start=None, end=None, *args):
+    def _manual_region(self, start=None, end=None, **kwargs):
         if start is None or end is None:
             start, end = self._get_start_end_time()
         else:
@@ -702,6 +700,8 @@ class TimeRangeDialog(QDialog):
         self.plot.region.setRegion([start_ts, end_ts])
         self.plot.region.show()
         self._add_current_region()
+        if kwargs.get("delete_select", False):
+            self._delete_selected_region()
 
     def nativeEvent(self, eventType, message):
         if eventType == b"windows_generic_MSG":

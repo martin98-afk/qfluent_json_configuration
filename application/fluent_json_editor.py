@@ -39,27 +39,30 @@ class FluentJSONEditor(FluentWindow):
         screen_width, screen_height = screen_rect.width(), screen_rect.height()
         self.window_width = int(screen_width * 0.6)
         self.window_height = int(screen_height * 0.75)
+        self.resize(self.window_width, self.window_height)
         screen = QGuiApplication.primaryScreen()
         self.scale = int(screen.logicalDotsPerInch() / 96.0)  # 96 DPI 为基准
         self.font_size = round(10 * self.scale)
         self.setup_log_viwer()
         # create sub interface
         self.editor = JSONEditor(home=self)
-
+        self.navigationInterface.setAcrylicEnabled(True)
         # 1. 创建启动页面
         self.setWindowIcon(get_icon("logo"))
         self.splashScreen = SplashScreen(self.windowIcon(), self)
-        self.splashScreen.setIconSize(QSize(102, 102))
-
+        self.splashScreen.setIconSize(QSize(130, 130))
         # 2. 在创建其他子页面前先显示主界面
+        desktop = QApplication.desktop().availableGeometry()
+        w, h = desktop.width(), desktop.height()
+        self.move(w // 2 - self.width() // 2, h // 2 - self.height() // 2)
         self.show()
-
         # 3. 初始化界面
         self._init_menu()
         self._initNavigation()
         self.initWindow()
         # 4. 隐藏启动页面
         self.splashScreen.finish()
+
 
     def _init_menu(self):
         self.trend_analysis_dialog = TrendAnalysisDialog(
@@ -111,7 +114,6 @@ class FluentJSONEditor(FluentWindow):
         self.navigationInterface.setCurrentItem(self.editor.objectName())
 
     def initWindow(self):
-        self.resize(self.window_width, self.window_height)
         self.setWindowTitle(self.window_title)
         desktop = QApplication.desktop().availableGeometry()
         w, h = desktop.width(), desktop.height()

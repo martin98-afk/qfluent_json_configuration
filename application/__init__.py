@@ -1,6 +1,7 @@
 import os
 import sys
 
+from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtGui import QFont, QPalette
 from PyQt5.QtWidgets import QApplication
@@ -10,16 +11,19 @@ from application.utils.config_handler import load_config, save_history, save_con
 from application.utils.utils import seed_everything
 
 
-def rigister_parameter():
-    # 装饰器，用于注册参数方法类
-    def decorator(cls):
-        return cls
+def enable_dpi_scale():
+    # enable dpi scale
+    QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
 
 
 def run_app():
     seed_everything()
     os.environ["OMP_NUM_THREADS"] = "3"
+    enable_dpi_scale()
     app = QApplication(sys.argv)
+    app.setAttribute(Qt.AA_DontCreateNativeWidgetSiblings)
     QApplication.setDoubleClickInterval(600)  # 全局设置为 300 毫秒
     font = QFont("微软雅黑", 10)
     app.setFont(font)

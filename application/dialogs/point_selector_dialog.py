@@ -1,7 +1,7 @@
 import ctypes
 import numpy as np
 import pyqtgraph as pg
-from PyQt5.QtCore import Qt, QThreadPool, QPropertyAnimation, QEasingCurve
+from PyQt5.QtCore import Qt, QThreadPool, QPropertyAnimation, QEasingCurve, QDate
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (
     QAbstractItemView, QListWidget, QDateTimeEdit,
     QComboBox, QWidget, QSplitter
 )
-from qfluentwidgets import SearchLineEdit
+from qfluentwidgets import SearchLineEdit, FastCalendarPicker
 
 from application.utils.threading_utils import Worker
 from application.widgets.trend_plot_widget import TrendPlotWidget
@@ -136,11 +136,11 @@ class PointSelectorDialog(QDialog):
         # 空间拉伸项（推控件靠右）
         ctrl_layout.addStretch()
 
-        self.start_dt = styled_dt(QDateTimeEdit())
-        self.end_dt = styled_dt(QDateTimeEdit())
-        now = QDateTimeEdit().dateTime().currentDateTime()
-        self.end_dt.setDateTime(now)
-        self.start_dt.setDateTime(now.addSecs(-12 * 3600))
+        self.start_dt = FastCalendarPicker(self)
+        self.end_dt = FastCalendarPicker(self)
+        now = QDate.currentDate()
+        self.end_dt.setDate(now)
+        self.start_dt.setDate(now.addDays(-1))
 
         # 采样
         self.cmb_sample = QComboBox()
@@ -393,8 +393,8 @@ class PointSelectorDialog(QDialog):
             return
 
         self.set_curve_name(self.selected_point)
-        start = self.start_dt.dateTime().toPyDateTime()
-        end = self.end_dt.dateTime().toPyDateTime()
+        start = self.start_dt.getDate().toPyDate()
+        end = self.end_dt.getDate().toPyDate()
         sample = self.cmb_sample.currentData()
         worker = Worker(self.data_fetcher, self.selected_point, start, end, sample)
         worker.signals.finished.connect(self._on_data_fetched)

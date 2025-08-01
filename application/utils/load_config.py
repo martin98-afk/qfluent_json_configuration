@@ -11,6 +11,7 @@ from PyQt5.QtCore import QObject, pyqtSignal, QThreadPool
 from application.tools.api_service.file_uploader import DatasetUploader
 from application.tools.api_service.model_duplicate import ModelDuplicate
 from application.tools.api_service.model_execute import ModelExecute
+from application.tools.api_service.model_logger import ModelLogger
 from application.tools.api_service.model_uploader import ModelUploader
 from application.tools.api_service.point_search import PointSearcher
 from application.tools.api_service.rtsp_search import RTSPSearcher
@@ -236,6 +237,8 @@ class ParamConfigLoader(QObject):
                 return tool_name, tool_type, ModelUploader(prefix, api_key, **cfg_tool)
             elif tool_type == "model-duplicate":
                 return tool_name, tool_type, ModelDuplicate(prefix, api_key, **cfg_tool)
+            elif tool_type == "model-logger":
+                return tool_name, tool_type, ModelLogger(prefix, api_key, **cfg_tool)
             elif tool_type == "model-execute":
                 return tool_name, tool_type, ModelExecute(prefix, api_key, **cfg_tool)
             elif tool_type == "trenddb-fetcher":
