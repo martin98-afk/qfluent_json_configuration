@@ -58,7 +58,7 @@ api-tools:
           /rest/eng/paramConfig/listParamNew?page=1&limit=1000&searchText=&pctypType=5&paramType=03&orderBy=&devNo=
         环境参数: 
           /rest/eng/paramConfig/listParamNew?page=1&limit=1000&searchText=&pctypType=5&paramType=04&orderBy=&devNo=
-        时序库参数: /rest/database/queryList?page=1&limit=10000&searchText=&orderBy=
+        时序库参数: /rest/database/queryList?page=1&limit=100000&searchText=&orderBy=
     rtsp_search:
       type: rtsp-search
       dev_name_path: /rest/fm/fms10001/listSearchTree

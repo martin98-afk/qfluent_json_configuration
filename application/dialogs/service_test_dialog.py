@@ -15,11 +15,9 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QPlainTextEdit,
     QTextEdit,
-    QComboBox,
     QLabel,
     QSplitter,
     QMessageBox,
-    QLineEdit,
     QShortcut,
 )
 from loguru import logger

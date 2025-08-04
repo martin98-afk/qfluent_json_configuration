@@ -21,6 +21,7 @@ class UploadDatasetMessageBox(MessageBoxBase):
         # 选择上传文件行
         env_label = QLabel("请选择配置文件上传数据集后同步的目标组件：")
         self.env_combo = ComboBox()
+        self.env_combo.setMaxVisibleItems(15)
         self.env_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         # 示例运行环境，可以替换成实际调用接口返回的内容
         self.env_combo.addItems(upload_paths)

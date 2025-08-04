@@ -198,7 +198,7 @@ class ParamConfigLoader(QObject):
         # 增加连接postgres数据库的工具
         if "nacos" in cfg:
             nacos_cfg = cfg.pop("nacos", {})
-            nacos_cfg = {
+            nacos_cfg = nacos_cfg | {
                 "host": f"http://{self.global_host if 'host' not in nacos_cfg else nacos_cfg['host']}:{nacos_cfg.get('port', '8849')}",
                 "username": nacos_cfg.get("username", "nacos"),
                 "password": nacos_cfg.get("password", "nacos"),
@@ -213,7 +213,7 @@ class ParamConfigLoader(QObject):
             postgres_cfg = tool_list["get_postgres_config"].call()
             # 如果postgres中host配置不是真实的地址，则检测是否有postgres单独配置的地址，否则使用全局host
             if not re.search(r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$", postgres_cfg["host"]):
-                postgres_cfg["host"] = cfg.pop("postgres-host", self.global_host)
+                postgres_cfg["host"] = nacos_cfg.pop("postgres-host", self.global_host)
             tool_list["di_flow"] = DiFlow(**postgres_cfg)
             tool_list["di_env"] = DiEnv(**postgres_cfg)
             tool_list["di_flow_params"] = DiFlowParams(**postgres_cfg)

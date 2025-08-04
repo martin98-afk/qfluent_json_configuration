@@ -2,6 +2,7 @@ import json
 import os
 import configparser
 
+from loguru import logger
 from ruamel.yaml import YAML
 from datetime import datetime
 
@@ -17,7 +18,7 @@ HISTORY_PATH = os.path.expanduser(os.path.join(PATH_PREFIX, "历史版本记录.
 def path_exists(path):
     return os.path.exists(os.path.join(PATH_PREFIX, path))
 
-
+@error_catcher_decorator
 def load_config(file_path):
     with open(file_path, 'r', encoding='utf-8') as file:
         if file_path.endswith('.json'):
@@ -41,6 +42,10 @@ def save_config(file_path, data):
         elif file_path.endswith('.ini'):
             config = configparser.ConfigParser()
             for section, values in data.items():
+                if isinstance(values, str) and len(values) == 0:
+                    values = {}
+                elif isinstance(values, str):
+                    values = {section: values}
                 config[section] = values
             config.write(file)
         else:

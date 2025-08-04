@@ -41,6 +41,7 @@ class UploadModelMessageBox(MessageBoxBase):
         env_layout = QHBoxLayout()
         env_label = QLabel("选择运行环境：")
         self.env_combo = ComboBox()
+        self.env_combo.setMaxVisibleItems(15)
         self.env_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         env_list = parent.config.api_tools.get("di_env").call()
         # 示例运行环境，可以替换成实际调用接口返回的内容

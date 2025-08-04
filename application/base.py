@@ -1,10 +1,9 @@
 # 生成base parameter类，主要方法有编辑参数、保存参数、加载参数三个抽象方法
-from abc import ABC, abstractmethod
+from abc import ABC
 
 import httpx
-from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
-
-from PyQt5.QtWidgets import QTreeWidgetItem
+import tenacity
+from tenacity import stop_after_attempt, wait_fixed, retry_if_exception_type
 
 
 class BaseTool(ABC):

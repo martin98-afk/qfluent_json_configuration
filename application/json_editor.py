@@ -22,14 +22,14 @@ from PyQt5.QtGui import QFont, QKeySequence
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QPushButton, QWidget, QMenu, QSizePolicy,
     QDesktopWidget, QStatusBar, QUndoStack, QAction, QLabel,
-    QWidgetAction, QListWidget, QListWidgetItem, QFrame, QTextEdit
+    QWidgetAction, QListWidget, QListWidgetItem, QFrame
 )
 from PyQt5.QtWidgets import (
     QFileDialog, QInputDialog, QShortcut, QAbstractItemView
 )
 from deepdiff import DeepDiff
 from qfluentwidgets import FluentIcon as FIF, CommandBar, TabBar, SearchLineEdit, MessageBox, InfoBar, InfoBarPosition, \
-    InfoBarIcon, PushButton, Dialog, PlainTextEdit, PrimaryPushButton, SubtitleLabel
+    InfoBarIcon, PushButton
 from qfluentwidgets import RoundMenu, Action
 
 from application.dialogs.histogram_range_set_dialog import IntervalPartitionDialog
@@ -265,6 +265,22 @@ class JSONEditor(QWidget):
         # 替换原来的文件信息标签
         self.status_bar.addPermanentWidget(self.model_selector_btn)
 
+        # 添加配置文件类型按钮
+        self.file_type_btn = QPushButton("JSON")  # 允许水平扩展
+        self.file_type_btn.setIcon(get_icon("Json"))
+        self.file_type_btn.setToolTip(
+            "<div style='background-color:#f0f0f0; color:#333333; "
+            "border:1px solid #cccccc; padding:4px 8px;'>更改配置文件类型</div>"
+        )
+        self.file_type_btn.setStyleSheet(
+            "QPushButton { border: none; background: transparent; color: #666; padding: 0px 4px; }"
+            "QPushButton:hover { color: #1890ff; }"
+        )
+        self.file_type_btn.clicked.connect(self.show_file_type_dropdown)
+
+        # 替换原来的文件信息标签
+        self.status_bar.addPermanentWidget(self.file_type_btn)
+
         # 添加状态栏到主布局
         main_layout.addWidget(self.status_bar)
 
@@ -315,6 +331,122 @@ class JSONEditor(QWidget):
         )
         self.commandBar.addHiddenAction(Action(FIF.SETTING, '结构设置', triggered=self._goto_structure_settings))
 
+    def show_file_type_dropdown(self):
+        file_list = ["JSON", "YAML", "YML", "INI"]
+        menu = QMenu(self)
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: white;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                font-size: 10pt;
+                margin: 0px;
+                padding: 0px;
+            }
+            QMenu::item:selected {
+                background-color: #e6f7ff;
+                color: #003366;
+            }
+            QMenu::separator {
+                height: 1px;
+                background: #ddd;
+                margin: 4px 0px;
+            }
+        """)
+
+        # 添加标题
+        title_widget = QLabel("文件类型列表")
+        title_widget.setAlignment(Qt.AlignCenter)
+        title_widget.setStyleSheet("""
+            background-color: #409EFF;  /* 深蓝标题 */
+            color: white;
+            font-weight: bold;
+            padding: 4px 0px;
+            border-top-left-radius: 4px;
+            border-top-right-radius: 4px;
+        """)
+        title_action = QWidgetAction(menu)
+        title_action.setDefaultWidget(title_widget)
+        menu.addAction(title_action)
+
+        def get_max_item_width(menu, file_list):
+            font = menu.font()
+            fm = QFontMetrics(font)
+            max_width = 0
+            for item in file_list:
+                text_width = fm.width(item)
+                max_width = max(max_width, text_width)
+            return max_width + 70
+
+        def get_max_item_height(menu, file_list):
+            font = menu.font()
+            fm = QFontMetrics(font)
+            item_height = fm.height() + 8
+            return item_height * len(file_list)
+
+        # 创建 QListWidget
+        list_widget = QListWidget()
+        list_widget.setSelectionMode(QListWidget.SingleSelection)
+        list_widget.setFixedHeight(get_max_item_height(menu, file_list))
+        list_widget.setFixedWidth(get_max_item_width(menu, file_list))
+        list_widget.setStyleSheet("""
+            QListWidget {
+                background-color: #f9f9f9;  /* 浅灰背景 */
+                outline: 0px;
+                font-size: 10pt;
+                border: none;
+                padding: 0px;
+            }
+            QListWidget::item {
+                padding: 4px 10px;
+            }
+            QListWidget::item:selected {
+                background-color: #409EFF;  /* 深蓝背景 */
+                color: white;
+            }
+            QListWidget::item:hover {
+                background-color: #e6f7ff;
+                color: #003366;
+            }
+        """)
+        list_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        # 将 QListWidget 封装为 QWidgetAction
+        list_action = QWidgetAction(menu)
+        list_action.setDefaultWidget(list_widget)
+        menu.addAction(list_action)
+
+        # 添加模型项
+        current_type = self.file_format.get(self.current_file)
+        for file_type in file_list:
+            item = QListWidgetItem(file_type)
+            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+            item.setCheckState(Qt.Checked if file_type.lower() == current_type else Qt.Unchecked)
+            list_widget.addItem(item)
+
+        # 连接点击事件
+        list_widget.itemClicked.connect(lambda item: self.update_file_format(item, menu))
+
+        # 计算弹窗位置
+        pos = self.file_type_btn.mapToGlobal(QPoint(0, 0))
+        menu_height = menu.sizeHint().height()
+        menu_width = menu.sizeHint().width()
+        target_pos = QPoint(pos.x() - int(0.4 * menu_width), pos.y() - menu_height)
+        menu.exec_(target_pos)
+
+    def update_file_format(self, item, menu, type_name: str = None):
+        type_name = item.text() if type_name is None else type_name
+        self.file_format[self.current_file] = type_name.lower()
+        self.file_type_btn.setText(type_name.upper())
+        if type_name.lower() == "json":
+            self.file_type_btn.setIcon(get_icon("Json"))
+        elif type_name.lower() == "yaml" or type_name.lower() == "yml":
+            self.file_type_btn.setIcon(get_icon("YAML"))
+        elif type_name.lower() == "ini":
+            self.file_type_btn.setIcon(get_icon("ini"))
+        if menu is not None:
+            menu.close()
+
     @error_catcher_decorator
     def show_model_dropdown(self, *args, **kwargs):
 
@@ -326,7 +458,7 @@ class JSONEditor(QWidget):
             del self.infobar
 
         if self.config.api_tools.get("di_flow") is None:
-            self.create_errorbar("错误", "模型配置错误，请检查！", show_button=True, button_fn=self._goto_api_settings)
+            self.create_errorbar("接口地址配置错误，请检查！", "", show_button=True, button_fn=self._goto_api_settings)
             return
 
         worker = Worker(fn=self.config.api_tools.get("di_flow"))
@@ -336,7 +468,7 @@ class JSONEditor(QWidget):
 
     def on_di_flow_get(self, model_names):
         if not isinstance(model_names, list):
-            self.create_errorbar("错误", "模型列表获取失败", show_button=True, button_fn=self._goto_api_settings)
+            self.create_errorbar("模型列表获取失败", "", show_button=True, button_fn=self._goto_api_settings)
             return
 
         menu = QMenu(self)
@@ -459,7 +591,7 @@ class JSONEditor(QWidget):
         pos = self.model_selector_btn.mapToGlobal(QPoint(0, 0))
         menu_height = menu.sizeHint().height()
         menu_width = menu.sizeHint().width()
-        target_pos = QPoint(pos.x() - int(0.9 * menu_width), pos.y() - menu_height)
+        target_pos = QPoint(pos.x() - int(0.5 * menu_width), pos.y() - menu_height)
         menu.exec_(target_pos)
 
     def handle_model_selected(self, item, menu):
@@ -716,6 +848,7 @@ class JSONEditor(QWidget):
         # 切换逻辑
         self.current_file = filename
         self.tree.clear()
+        self.update_file_format(None, None, self.file_format.get(filename, 'json'))
         # 从 open_files 中加载配置数据并生成树节点
         self.load_tree(self.open_files[filename])
         # 恢复展开/选中状态
@@ -726,12 +859,11 @@ class JSONEditor(QWidget):
 
     def is_same_as_file(self, name):
         # 判断当前配置是否与文件内容一致
-        path = self.orig_files.get(name, f"configurations/{name}.{self.file_format.get(name, 'json')}")
+        path = self.orig_files.get(name, f"configurations/{name}.{self.file_format.get(name)}")
         if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as f:
-                orig_data = json.load(f)
-                diff = DeepDiff(self.tree_to_dict(), orig_data, ignore_order=True)
-                return len(diff) == 0
+            orig_data = load_config(path)
+            diff = DeepDiff(self.tree_to_dict(), orig_data, ignore_order=True)
+            return len(diff) == 0
         else:
             return False
 
@@ -1136,6 +1268,7 @@ class JSONEditor(QWidget):
         self.open_files[filename] = config
         self.orig_files[filename] = path
         self.file_format[filename] = path.split(".")[-1]
+        self.update_file_format(None, None, path.split(".")[-1])
         self.add_tab(filename)
         self.tab_bar.setCurrentIndex(self.tab_bar.count() - 1)
         self.switch_to_file(filename)
@@ -1342,6 +1475,7 @@ class JSONEditor(QWidget):
             self.open_files[filename] = config
             self.orig_files[filename] = path
             self.file_format[filename] = path.split(".")[-1]
+            self.update_file_format(None, None, path.split(".")[-1])
             self.add_tab(filename)
             self.tab_bar.setCurrentIndex(self.tab_bar.count() - 1)
             self.switch_to_file(filename)
@@ -1977,9 +2111,7 @@ class JSONEditor(QWidget):
 
     def _on_close(self, index: int):
         name = self.tab_bar.tabText(index)
-        if hasattr(self, "is_same_as_file") and self.is_same_as_file(
-                name
-        ):
+        if hasattr(self, "is_same_as_file") and self.is_same_as_file(name):
             self.tab_bar.removeTab(index)
             self.close_file(name)
         else:

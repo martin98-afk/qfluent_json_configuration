@@ -20,7 +20,7 @@ class GetNacosServicePath(BaseTool):
                  data_id="sushine-eeoptimize.properties",
                  group="DEFAULT_GROUP",
                  namespace="test-nhyh",
-                 parent=None):
+                 parent=None, **kwargs):
         super().__init__(parent)
         self.eeoptimize_config = NacosConfig(
             **{"host": host,

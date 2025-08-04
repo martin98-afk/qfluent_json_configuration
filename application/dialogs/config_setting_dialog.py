@@ -362,7 +362,7 @@ class ConfigSettingDialog(QDialog):
         QMessageBox.information(self, "保存成功", "配置文件已更新！")
         if self.parent:
             self.parent.load_config(self.parent.config.param_definitions_path)
-            self.parent.reload_tree()
+            # self.parent.reload_tree()
 
     def delete_parameter(self):
         cur = self.tree.currentItem()

@@ -17,7 +17,7 @@ from PyQt5.QtWidgets import (
     QSizePolicy,
 )
 from loguru import logger
-from qfluentwidgets import ComboBox, BreadcrumbBar, setFont
+from qfluentwidgets import ComboBox, BreadcrumbBar, setFont, Dialog
 
 from application.utils.config_handler import HISTORY_PATH
 from application.utils.data_format_transform import list2str
@@ -76,6 +76,7 @@ class VersionDiffDialog(QDialog):
         file_label = QLabel("📁 文件：")
         file_label.setStyleSheet("font-size: 18px; font-weight: bold;")
         self.history_file_combo = ComboBox()
+        self.history_file_combo.setMaxVisibleItems(15)
         self.history_file_combo.setFixedWidth(250)  # 更宽一点
         self.history_file_combo.setStyleSheet("font-size: 18px; padding: 2px 6px;")
         self.history_file_combo.addItems(self.file_map.keys())
@@ -89,6 +90,7 @@ class VersionDiffDialog(QDialog):
             "font-size: 18px; font-weight: bold; margin-left: 8px;"
         )
         self.version_time_combo = ComboBox()
+        self.version_time_combo.setMaxVisibleItems(15)
         self.version_time_combo.setFixedWidth(230)  # 缩小一些
         self.version_time_combo.setStyleSheet("font-size: 18px; padding: 2px 6px;")
         self.version_time_combo.addItems(
@@ -242,6 +244,8 @@ class VersionDiffDialog(QDialog):
             if isinstance(value, dict):
                 if not isinstance(other_value, dict):
                     has_difference = True  # 类型不同（本节点是字典，对方不是）
+                else:
+                    has_difference = value != other_value
             else:
                 if isinstance(other_value, dict):
                     has_difference = True  # 类型不同（本节点不是字典，对方是）
@@ -397,8 +401,14 @@ class VersionDiffDialog(QDialog):
             json.dump(self.history_config, f, ensure_ascii=False, indent=2)
 
     def load_to_editor(self):
-        self.apply_to_editor(self.current_config)
-        self.accept()
+        msg_box = Dialog("已更新当前配置", "")
+        msg_box.yesButton.setText("继续历史对比")
+        msg_box.cancelButton.setText("返回配置列表")
+        if msg_box.exec():
+            pass
+        else:
+            self.apply_to_editor(self.current_config)
+            self.accept()
 
     def nativeEvent(self, eventType, message):
         if eventType == b"windows_generic_MSG":

@@ -59,7 +59,6 @@ def error_catcher_decorator(func):
         except Exception as e:
             import traceback
             logger.error(f"Error in {func.__name__}: {traceback.format_exc()}")
-            return None
 
     return wrapper
 

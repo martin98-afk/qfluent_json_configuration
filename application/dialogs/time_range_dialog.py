@@ -415,7 +415,10 @@ class TimeRangeDialog(QDialog):
         groups = defaultdict(list)
         for t in self.tags:
             type_name, name = t.split(":", 1) if ":" in t else ("其他", t)
-            name = name.split("\n")[1] if "\n" in name else name
+            if "\n" in name and len(name.split("\n")[1]) > 0:
+                name = name.split("\n")[1]
+            else:
+                name = name.split("\n")[0]
             groups[type_name].append(name)
 
         self.point_list.clear()

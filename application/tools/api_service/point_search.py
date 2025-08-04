@@ -37,14 +37,8 @@ class PointSearcher(BaseTool):
             self._dev_name_dict = self._get_dev_name()
         except:
             import traceback
-            logger.error(f"设备名获取失败！")
-            self._dev_name_dict = {}
+            raise Exception(f"设备名获取失败！")
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_fixed(1),
-        retry=retry_if_exception_type((httpx.RequestError, httpx.HTTPStatusError))
-    )
     def _get_dev_name(self) -> Dict[str, str]:
         """
         获取设备名称列表，带重试机制，避免超时导致失败。

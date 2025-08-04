@@ -22,6 +22,7 @@ class CopyModelMessageBox(MessageBoxBase):
         model_layout = QHBoxLayout()
         model_label = QLabel("选择要复制的模型：")
         self.model_combo = ComboBox()
+        self.model_combo.setMaxVisibleItems(10)
         self.model_combo.addItems([item[0] for item in model_names])
         model_layout.addWidget(model_label)
         model_layout.addWidget(self.model_combo)

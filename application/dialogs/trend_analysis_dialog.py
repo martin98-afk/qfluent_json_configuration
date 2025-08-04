@@ -26,8 +26,9 @@ from PyQt5.QtWidgets import (
     QStyle,
 )
 from loguru import logger
+from qfluentwidgets import FluentIcon as FIF
 from qfluentwidgets import SearchLineEdit, InfoBar, InfoBarPosition, Dialog, FastCalendarPicker, CompactTimeEdit, \
-    PushButton, SwitchButton, ToolButton
+    PushButton, SwitchButton, ToolButton, TogglePushButton
 
 from application.utils.threading_utils import Worker
 from application.widgets.color_picker import ColorComboBox
@@ -1339,14 +1340,8 @@ class TrendAnalysisDialog(QDialog):
 
         # 增加时间标记功能
         # 划分开关按钮
-        mode_label = QLabel("标记模式:")
-        # mode_label.setStyleSheet("color: #495057; font-size: 12px; margin-left: 10px;")
-        header.addWidget(mode_label)
-
-        self.btn_partition = SwitchButton(self)
-        self.btn_partition.setOffText("")
-        self.btn_partition.setOnText("")
-        self.btn_partition.checkedChanged.connect(self._on_partition_toggled)
+        self.btn_partition = TogglePushButton(FIF.PIN, '标记模式', self)
+        self.btn_partition.toggled.connect(self._on_partition_toggled)
         header.addWidget(self.btn_partition)
 
         # 曲线颜色

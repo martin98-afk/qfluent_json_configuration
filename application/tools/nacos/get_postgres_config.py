@@ -20,7 +20,7 @@ class GetPostgresConfig(BaseTool):
                  data_id="database.properties",
                  group="DEFAULT_GROUP",
                  namespace="test-nhyh",
-                 parent=None):
+                 parent=None, **kwargs):
         super().__init__(parent)
         self.database_config = {
             "host": host,
