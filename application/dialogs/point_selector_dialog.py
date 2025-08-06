@@ -302,7 +302,6 @@ class PointSelectorDialog(QDialog):
 
     def filter_table(self):
         kw = self.search_input.text().strip().lower()
-        print(f"搜索内容：{kw}")
         search_fetcher = self.parent.config.get_tools_by_type("point-search")
         worker = Worker(search_fetcher, search_text=kw)
         worker.signals.finished.connect(self._on_search_complete)
@@ -319,21 +318,6 @@ class PointSelectorDialog(QDialog):
             for c, h in enumerate(p.keys()):
                 self.table.setItem(r, c, QTableWidgetItem(str(p.get(h, ""))))
         self.table.setSortingEnabled(True)
-
-    # def filter_table(self):
-    #     kw = self.search_input.text().strip().lower()
-    #     rows = [p for pts in self.all_points.values() for p in pts
-    #             if any(kw in str(v).lower() for v in p.values())]
-    #     hdrs = [self.table.horizontalHeaderItem(i).text()
-    #             for i in range(self.table.columnCount())]
-    #     self.table.setSortingEnabled(False)
-    #     self.table.setRowCount(0)
-    #     for p in rows:
-    #         r = self.table.rowCount();
-    #         self.table.insertRow(r)
-    #         for c, h in enumerate(hdrs):
-    #             self.table.setItem(r, c, QTableWidgetItem(str(p.get(h, ""))))
-    #     self.table.setSortingEnabled(True)
 
     def _on_table_clicked(self, row, col):
         # 寻找表头中列名为"测点名"的索引

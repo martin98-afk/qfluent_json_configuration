@@ -90,7 +90,14 @@ class FluentJSONEditor(FluentWindow):
         self.updater.check_update()
         self.window_title = f"{self.editor.config.title} - V{self.updater.current_version}"
         # 下半部分按钮
-        self.addSubInterface(self.log_viewer, get_icon("系统运行日志"), '执行日志', NavigationItemPosition.BOTTOM)
+        log_interface = self.addSubInterface(
+            self.log_viewer, get_icon("系统运行日志"), '执行日志', NavigationItemPosition.BOTTOM)
+        log_interface.clicked.connect(
+            lambda: (
+                self.text_logger._clean_trailing_empty_lines(),
+                self.text_logger.scroll_to_bottom(force=True)
+            )
+        )
         self.navigationInterface.addItem(
             routeKey='update',
             icon=FIF.SYNC,
@@ -174,6 +181,7 @@ class FluentJSONEditor(FluentWindow):
     def setup_log_viwer(self):
         if not hasattr(self, 'log_viewer'):
             self.log_viewer = QPlainTextEdit()
+            self.log_viewer.document().setDocumentMargin(0)
             self.log_viewer.setObjectName('运行日志')
             self.log_viewer.setReadOnly(True)
             self.log_viewer.setFont(QFont("Consolas", 11))
@@ -235,34 +243,6 @@ class FluentJSONEditor(FluentWindow):
                 }}
             """)
 
-            def safe_scroll_to_bottom(min_val, max_val):
-                """安全滚动到底部，防止对象销毁后访问"""
-                # 1. 检查对象是否仍然有效
-                if not hasattr(self, 'log_viewer') or self.log_viewer is None:
-                    return
-
-                try:
-                    # 2. 检查滚动条是否有效 (关键!)
-                    scrollbar = self.log_viewer.verticalScrollBar()
-                    if not scrollbar or scrollbar.parent() is None:
-                        return
-
-                    # 3. 通过队列确保在对象有效时执行
-                    QMetaObject.invokeMethod(
-                        scrollbar,
-                        "setValue",
-                        Qt.QueuedConnection,
-                        Q_ARG(int, max_val)
-                    )
-                except RuntimeError as e:
-                    # 捕获"underlying C/C++ object has been deleted"
-                    if "deleted" in str(e).lower():
-                        logger.debug("Ignored scroll on destroyed log viewer")
-                    else:
-                        logger.error(f"Scroll error: {str(e)}")
-
-            # 启用垂直滚动条自动到底部
-            self.log_viewer.verticalScrollBar().rangeChanged.connect(safe_scroll_to_bottom)
             # 创建 sink
             self.text_logger = QTextEditLogger(self.log_viewer, max_lines=1000)
             logger.remove()

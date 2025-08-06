@@ -602,10 +602,11 @@ class JSONServiceTester(QMainWindow):
         self.search_results.clear()
         self.current_result_index = -1
 
-        if not keyword.strip():
-            if hasattr(self, "_raw_log_content"):
-                self.log_display.setHtml(self._raw_log_content)
+        if len(keyword.strip()) == 0:
+            self.search_results = []
             self.update_search_status()
+            if hasattr(self, "_raw_log_content"):
+                self.log_display.setHtml(self.transform_log_to_html(self._raw_log_content))
             return
 
         try:

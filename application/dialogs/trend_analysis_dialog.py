@@ -88,7 +88,7 @@ class TrendAnalysisDialog(QDialog):
         )
 
         # 应用现代化样式
-        self.apply_modern_style()
+        # self.apply_modern_style()
         # 构建UI
         self._build_ui()
 

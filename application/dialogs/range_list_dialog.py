@@ -70,7 +70,7 @@ class RangeListDialog(QDialog):
         button_box.rejected.connect(self.reject)
 
         if current_value:
-            for part in current_value.split(','):
+            for part in current_value.split('\n'):
                 if '~' in part:
                     a, b = part.split('~')
                     self.add_row(a.strip(), b.strip())

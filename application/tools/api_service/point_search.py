@@ -21,9 +21,9 @@ class PointSearcher(BaseTool):
             prefix: str,
             api_key: str,
             dev_name_path: str,
-            tag_info_search: str,
             point_path: Dict[str, str],
             max_workers: int = 10,
+            tag_info_search: str = "",
             **kwargs
     ):
         super().__init__()
@@ -153,7 +153,6 @@ class PointSearcher(BaseTool):
                 "skipCount": 0,
                 "maxResultCount": 1000
             }
-            print(params)
             with httpx.Client(base_url=self.base_url, timeout=self.timeout) as client:
                 resp = client.get(self.tag_info_search, params=params, headers=self.headers)
             resp.raise_for_status()
@@ -177,7 +176,6 @@ class PointSearcher(BaseTool):
         并发搜索所有 dev_id 与所有 point_paths 组合的测点。
         若设备名称加载失败，会抛出异常。
         """
-        print(kwargs)
         if "search_text" in kwargs:
             return {"时序库参数" : self._search_tags_info(kwargs["search_text"])}
         else:

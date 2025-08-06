@@ -10,6 +10,8 @@ from PyQt5.QtWidgets import (
 )
 from qfluentwidgets import FastCalendarPicker, CompactDoubleSpinBox
 
+from application.dialogs.range_input_dialog import RangeInputDialog
+from application.dialogs.range_list_dialog import RangeListDialog
 from application.tools.algorithm.calc_normal_range import CalcNormalRange
 from application.tools.algorithm.jenks_breakpoint import JenksBreakpoint
 from application.utils.threading_utils import Worker
@@ -114,6 +116,13 @@ class IntervalPartitionDialog(QDialog):
         self.ai_partition.setToolTip('AI智能划分')
         self.ai_partition.clicked.connect(self._on_ai_clicked)
         ctrl.addWidget(self.ai_partition)
+
+        manual = QPushButton("输入")
+        manual.setIcon(get_icon("手动设置"))
+        manual.setToolTip("手动选择时间范围")
+        manual.clicked.connect(self._manual_input)
+        manual.setStyleSheet(get_button_style_sheet())
+        ctrl.addWidget(manual)
         # 划分开关按钮
         self.btn_partition = QPushButton("划分")
         self.btn_partition.setIcon(get_icon("钢笔"))
@@ -251,6 +260,35 @@ class IntervalPartitionDialog(QDialog):
 
         self._reset_apply_btn()
 
+    def _manual_input(self):
+        current_value = self.get_intervals()
+
+        if self.type == "partition":
+            dlg = RangeListDialog("\n".join(["~".join([str(item) for item in row]) for row in current_value]))
+            dlg.setWindowTitle(f"区间列表编辑 - {self.point_name}")
+            if dlg.exec_() == QDialog.Accepted:
+                self._clear_all_lines()
+                last_max_val = np.inf
+                for row in range(dlg.table.rowCount()):
+                    min_item = dlg.table.item(row, 0)
+                    max_item = dlg.table.item(row, 1)
+                    if min_item and max_item:
+                        min_val = float(min_item.text().strip())
+                        max_val = float(max_item.text().strip())
+                        if min_val != last_max_val:
+                            self._add_cut_line(min_val, initial=True)
+                        self._add_cut_line(max_val, initial=True)
+                        last_max_val = max_val
+
+        else:
+            # 如果没有找到测点，使用纯手动编辑模式
+            dlg = RangeInputDialog("~".join([str(item) for item in current_value]))
+            dlg.setWindowTitle(f"范围输入 - {self.point_name}")
+            if dlg.exec_() == QDialog.Accepted:
+                self._clear_all_lines()
+                self._add_cut_line(dlg.min_value, initial=True)
+                self._add_cut_line(dlg.max_value, initial=True)
+
     def _add_cut_line(self, x: float, initial=False):
         ln = DraggableLine(x)
         ln.setZValue(10)  # 设置较高的Z值
@@ -300,7 +338,7 @@ class IntervalPartitionDialog(QDialog):
         if self.type == "partition":
             xs = sorted(ln.value() for ln in self.cut_lines)
             if len(xs) > 1:
-                return [(xs[i], xs[i + 1]) for i in range(len(xs) - 1)]
+                return [(xs[i], xs[i + 1]) for i in range(len(xs) - 1) if abs(xs[i] - xs[i + 1]) > 1e-2]
             else:
                 return []
         else:
