@@ -33,6 +33,7 @@ class VersionDiffDialog(QDialog):
         apply_to_editor_callback,
         history_file_name: str,
         history_time: str,
+        file_map,
         parent=None,
     ):
         super().__init__(parent)
@@ -49,7 +50,7 @@ class VersionDiffDialog(QDialog):
         self.setWindowTitle("历史版本对比")
         self.setMinimumSize(1500, 750)
         # 动态加载 file_map
-        self.file_map = self.load_file_map()
+        self.file_map = file_map
         self.history_file_name = history_file_name
         self.selected_file = history_file_name
         self.history_config = history_config
@@ -94,7 +95,7 @@ class VersionDiffDialog(QDialog):
         self.version_time_combo.setFixedWidth(230)  # 缩小一些
         self.version_time_combo.setStyleSheet("font-size: 18px; padding: 2px 6px;")
         self.version_time_combo.addItems(
-            [item[0] for item in self.file_map[history_file_name]]
+            [item["save_time"] for item in self.file_map[history_file_name]]
         )
         self.version_time_combo.setCurrentText(history_time)
         self.version_time_combo.currentIndexChanged.connect(self.load_version_config)
@@ -179,31 +180,11 @@ class VersionDiffDialog(QDialog):
         self.expand_all(self.history_tree)
         self.expand_all(self.current_tree)
 
-    def load_file_map(self):
-        import json
-
-        file_map = {}
-        try:
-            with open(HISTORY_PATH, "r", encoding="utf-8") as f:
-                history = json.load(f)
-            for file, timestamp, config in history:
-                if file not in file_map:
-                    file_map[file] = []
-                file_map[file].append((timestamp, config))
-            for versions in file_map.values():
-                versions.sort(
-                    key=lambda x: datetime.strptime(x[0], "%Y-%m-%d %H:%M:%S"),
-                    reverse=True,
-                )
-        except Exception as e:
-            logger.error("历史文件加载失败:", e)
-        return file_map
-
     def update_version_selector(self):
         self.selected_file = self.history_file_combo.currentText()
         if self.selected_file:
             versions = self.file_map.get(self.selected_file, [])
-            version_labels = [f"{ts}" for ts, _ in versions]
+            version_labels = [item["save_time"] for item in versions]
             self.version_time_combo.clear()
             self.version_time_combo.addItems(version_labels)
 
@@ -216,10 +197,10 @@ class VersionDiffDialog(QDialog):
 
     def get_config_by_version(self, version_time):
         versions = self.file_map.get(self.selected_file, [])
-        for ts, config in versions:
-            if ts == version_time:
+        for item in versions:
+            if item["save_time"] == version_time:
                 self.history_file_name = self.selected_file
-                return config
+                return item["history_data"]
         return {}
 
     def fill_tree(self, tree_widget, data, other_data, path=None, parent=None):

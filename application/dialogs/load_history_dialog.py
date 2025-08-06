@@ -13,11 +13,12 @@ class LoadHistoryDialog(MessageBoxBase):
         self.titleLabel = SubtitleLabel("选择历史记录")
         self.yesButton.hide()
         self.cancelButton.hide()
-
+        self.setClosableOnMaskClicked(True)
         self.file_map = file_map
         self.selected_file = None
         self.selected_version = None
         self.selected_config = None
+        self.file_format = None
         self.action = None
 
         # 文件下拉
@@ -66,7 +67,8 @@ class LoadHistoryDialog(MessageBoxBase):
         self.selected_file = self.file_combobox.currentText()
         if self.selected_file:
             versions = self.file_map[self.selected_file]
-            version_labels = [f"{ts}" for ts, _ in versions]
+            version_labels = [item["save_time"] for item in versions]
+
             self.version_combobox.clear()
             self.version_combobox.addItems(version_labels)
 
@@ -75,8 +77,9 @@ class LoadHistoryDialog(MessageBoxBase):
         version_index = self.version_combobox.currentIndex()
         if version_index >= 0:
             selected_version_data = self.file_map[self.selected_file][version_index]
-            self.selected_config = selected_version_data[1]  # 获取历史配置
+            self.selected_config = selected_version_data["history_data"]  # 获取历史配置
             self.selected_version = self.version_combobox.currentText()  # ✅ 记录版本时间
+            self.file_format = selected_version_data["file_type"]
             self.action = "load"  # 标记为加载动作
             self.accept()  # 关闭对话框，返回已选择的配置
 
@@ -85,7 +88,8 @@ class LoadHistoryDialog(MessageBoxBase):
         version_index = self.version_combobox.currentIndex()
         if version_index >= 0:
             selected_version_data = self.file_map[self.selected_file][version_index]
-            self.selected_config = selected_version_data[1]  # 获取历史配置
+            self.selected_config = selected_version_data["history_data"]  # 获取历史配置
             self.selected_version = self.version_combobox.currentText()  # ✅ 记录版本时间
+            self.file_format = selected_version_data["file_type"]
             self.action = "compare"  # 标记为对比动作
             self.accept()  # 关闭对话框，返回已选择的配置

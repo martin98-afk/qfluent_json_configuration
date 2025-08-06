@@ -1,7 +1,7 @@
 import ctypes
 import numpy as np
 import pyqtgraph as pg
-from PyQt5.QtCore import Qt, QThreadPool, QPropertyAnimation, QEasingCurve, QDate
+from PyQt5.QtCore import Qt, QThreadPool, QPropertyAnimation, QEasingCurve, QDate, QTimer
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
@@ -23,8 +23,9 @@ from application.utils.utils import (
 
 
 class PointSelectorDialog(QDialog):
-    def __init__(self, fetchers, data_fetcher, current_value: str = "", parent=None):
-        super().__init__(parent)
+    def __init__(self, parent=None):
+        super().__init__()
+        self.parent = parent
         self.setObjectName("测点选择")
         # 添加以下代码
         self.setWindowFlags(Qt.Window |
@@ -33,9 +34,6 @@ class PointSelectorDialog(QDialog):
                             Qt.WindowCloseButtonHint)
         self.setModal(False)
         self.setWindowModality(Qt.NonModal)
-        self.fetchers = fetchers
-        self.data_fetcher = data_fetcher
-        self.current_value = current_value.split("\n")[0]
         self.thread_pool = QThreadPool.globalInstance()
         self.selected_point = None
         # 窗口设置
@@ -96,7 +94,7 @@ class PointSelectorDialog(QDialog):
         # 右上：手动输入 + 趋势分析
         manual_layout = QHBoxLayout()
         manual_layout.addWidget(QLabel("手动输入:"))
-        self.manual_input = QLineEdit(self.current_value)
+        self.manual_input = QLineEdit("")
         self.manual_input.setPlaceholderText("输入后按回车确认")
         self.manual_input.returnPressed.connect(self.accept_selection)
         manual_layout.addWidget(self.manual_input)
@@ -226,22 +224,48 @@ class PointSelectorDialog(QDialog):
         body.addLayout(right)
         main.addLayout(body)
 
-        self.start_fetching()
         # 加载 & 异步拉取
         self.all_points = load_point_cache()
         if self.all_points:
             self.populate_ui(self.all_points)
 
+        # 添加防抖定时器 (300ms)
+        self.fetch_debounce_timer = QTimer()
+        self.fetch_debounce_timer.setSingleShot(True)
+        self.fetch_debounce_timer.timeout.connect(self._execute_pending_fetch)
+        self.pending_fetch_params = None  # 存储待执行的参数
+
     def set_curve_name(self, name: str):
         self.curve_name_label.setText(f"当前曲线: {name}")
 
-    def start_fetching(self):
-        self.type_list.clear()
-        self.all_points = {}
-        w = Worker(self.fetchers)
+    def start_fetching(self, fetchers, current_text: str = ""):
+        """修改为防抖版本，不立即执行获取，而是等待一段时间"""
+        current_text = current_text.split("\n")[0]
+        self.manual_input.setText(current_text)
+        # 存储参数，等待防抖
+        self.pending_fetch_params = (fetchers, current_text)
+        # 重置定时器，如果在300ms内再次调用则重新计时
+        self.fetch_debounce_timer.start(300)
+
+    def _execute_pending_fetch(self):
+        """执行实际的获取操作"""
+        if self.pending_fetch_params is None:
+            return
+
+        fetchers, current_text = self.pending_fetch_params
+
+        # 检查缓存中是否已有数据，避免不必要的请求
+        if not self._should_fetch_new_data(current_text):
+            self.highlight_current_point(self.all_points, current_text)
+            return
+
+        w = Worker(fetchers)
         w.signals.progress.connect(self._on_fetch_complete)
-        w.signals.finished.connect(self.highlight_current_point)
+        w.signals.finished.connect(lambda results: self.highlight_current_point(results, current_text))
         self.thread_pool.start(w)
+
+        # 清空待处理参数
+        self.pending_fetch_params = None
 
     def _on_fetch_complete(self, results):
         self.all_points.update(results)
@@ -249,14 +273,7 @@ class PointSelectorDialog(QDialog):
         self.populate_ui(results)
 
     def populate_ui(self, results):
-        new_set = set(results)
         old_set = set(self.type_list.item(i).text() for i in range(self.type_list.count()))
-
-        # 删除旧的多余项
-        for i in reversed(range(self.type_list.count())):  # 倒序删除防止索引错乱
-            item_text = self.type_list.item(i).text()
-            if item_text not in new_set:
-                self.type_list.takeItem(i)
 
         # 添加新增项
         for t in results:
@@ -285,18 +302,38 @@ class PointSelectorDialog(QDialog):
 
     def filter_table(self):
         kw = self.search_input.text().strip().lower()
-        rows = [p for pts in self.all_points.values() for p in pts
-                if any(kw in str(v).lower() for v in p.values())]
-        hdrs = [self.table.horizontalHeaderItem(i).text()
-                for i in range(self.table.columnCount())]
+        print(f"搜索内容：{kw}")
+        search_fetcher = self.parent.config.get_tools_by_type("point-search")
+        worker = Worker(search_fetcher, search_text=kw)
+        worker.signals.finished.connect(self._on_search_complete)
+        self.thread_pool.start(worker)
+
+    def _on_search_complete(self, results):
+        self.all_points.update(results)
+        results = [item for item in results.values()][0]
         self.table.setSortingEnabled(False)
         self.table.setRowCount(0)
-        for p in rows:
+        for p in results:
             r = self.table.rowCount();
             self.table.insertRow(r)
-            for c, h in enumerate(hdrs):
+            for c, h in enumerate(p.keys()):
                 self.table.setItem(r, c, QTableWidgetItem(str(p.get(h, ""))))
         self.table.setSortingEnabled(True)
+
+    # def filter_table(self):
+    #     kw = self.search_input.text().strip().lower()
+    #     rows = [p for pts in self.all_points.values() for p in pts
+    #             if any(kw in str(v).lower() for v in p.values())]
+    #     hdrs = [self.table.horizontalHeaderItem(i).text()
+    #             for i in range(self.table.columnCount())]
+    #     self.table.setSortingEnabled(False)
+    #     self.table.setRowCount(0)
+    #     for p in rows:
+    #         r = self.table.rowCount();
+    #         self.table.insertRow(r)
+    #         for c, h in enumerate(hdrs):
+    #             self.table.setItem(r, c, QTableWidgetItem(str(p.get(h, ""))))
+    #     self.table.setSortingEnabled(True)
 
     def _on_table_clicked(self, row, col):
         # 寻找表头中列名为"测点名"的索引
@@ -396,7 +433,7 @@ class PointSelectorDialog(QDialog):
         start = self.start_dt.getDate().toPyDate()
         end = self.end_dt.getDate().toPyDate()
         sample = self.cmb_sample.currentData()
-        worker = Worker(self.data_fetcher, self.selected_point, start, end, sample)
+        worker = Worker(self.parent.config.get_tools_by_type("trenddb-fetcher")[0], self.selected_point, start, end, sample)
         worker.signals.finished.connect(self._on_data_fetched)
         self.thread_pool.start(worker)
 
@@ -440,8 +477,7 @@ class PointSelectorDialog(QDialog):
         self.btn_apply_trend.setEnabled(True)
         self.btn_apply_trend.setIcon(get_icon("change"))
 
-    def highlight_current_point(self, results):
-        target = self.current_value
+    def highlight_current_point(self, results, target):
         self.selected_point = target
 
         # 自动跳转并高亮匹配的行
@@ -467,6 +503,17 @@ class PointSelectorDialog(QDialog):
         if self.type_list.count() > 0:
             self.type_list.setCurrentRow(0)
             self.on_type_selected(self.type_list.currentItem())
+
+    def _should_fetch_new_data(self, current_text):
+        """检查是否真的需要获取新数据"""
+        # 如果缓存中已有数据且不是空搜索，可以跳过获取
+        if self.all_points and current_text:
+            # 检查current_text是否可能在已有数据中
+            for points in self.all_points.values():
+                for point in points:
+                    if any(current_text in str(v) for v in point.values()):
+                        return False
+        return True
 
     def nativeEvent(self, eventType, message):
         if eventType == b'windows_generic_MSG':

@@ -6,12 +6,12 @@
 @time: 2025/8/1 09:56
 @desc: 
 """
-from PyQt5.QtCore import Qt, QTimer
 import html
-
-from PyQt5.QtGui import QTextCursor
-from qfluentwidgets import MessageBoxBase, SubtitleLabel, TextEdit, PrimaryPushButton, FluentIcon
 import re
+
+from PyQt5.QtCore import QTimer
+from PyQt5.QtGui import QTextCursor
+from qfluentwidgets import MessageBoxBase, SubtitleLabel, TextEdit
 
 
 class LogMessageBox(MessageBoxBase):
@@ -28,7 +28,8 @@ class LogMessageBox(MessageBoxBase):
     def __init__(self, log_content, parent=None):
         super().__init__(parent)
         self.titleLabel = SubtitleLabel('模型日志', self)
-
+        self._isDraggable = True
+        self.setSizeGripEnabled(True)  # 显示大小调整手柄（在右下角）
         # 使用支持富文本的TextEdit
         self.logTextEdit = TextEdit(self)
         self.logTextEdit.setReadOnly(True)

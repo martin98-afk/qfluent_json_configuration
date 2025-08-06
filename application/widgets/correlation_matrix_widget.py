@@ -3,20 +3,19 @@
 此组件为趋势分析对话框提供相关系数矩阵的可视化功能。
 包括热图绘制、颜色映射选择和样式控制等功能。
 """
-import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+import numpy as np
 from PyQt5.QtCore import Qt, pyqtSignal, QSize
 from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
     QLabel,
-    QComboBox,
     QFrame,
     QScrollArea,
 )
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
 
 
 class CorrelationMatrixWidget(QWidget):

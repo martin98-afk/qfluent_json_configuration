@@ -1,6 +1,7 @@
 import json
 import os
 import configparser
+from collections import defaultdict
 
 from loguru import logger
 from ruamel.yaml import YAML
@@ -51,20 +52,58 @@ def save_config(file_path, data):
         else:
             raise ValueError(f"Unsupported file format: {file_path}")
 
-def save_history(path, config):
-    history = []
+def load_history():
+    history = defaultdict(list)
     if os.path.exists(HISTORY_PATH):
         with open(HISTORY_PATH, "r", encoding="utf-8") as f:
             try:
-                history = json.load(f)
+                history_data = json.load(f)
+                if isinstance(history_data, list):
+                    for data in history_data:
+                        history[data[0]].append(
+                            {
+                                "file_type": "json",
+                                "save_time": data[1],
+                                "history_data": data[2]
+                            }
+                        )
+                else:
+                    history = history | history_data
             except:
-                history = []
-    history.append(
-        [
-            os.path.basename(path).replace(".json", ""),
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            config,
-        ]
+                pass
+    # 按版本时间排序
+    history = {k: sorted(v, key=lambda x: x["save_time"], reverse=True) for k, v in history.items()}
+    return history
+
+
+def save_history(path, config):
+    history = defaultdict(list)
+    file_name = ".".join(os.path.basename(path).split(".")[:-1])
+    file_type = os.path.basename(path).split(".")[-1]
+    if os.path.exists(HISTORY_PATH):
+        with open(HISTORY_PATH, "r", encoding="utf-8") as f:
+            try:
+                history_data = json.load(f)
+                if isinstance(history_data, list):
+                    for data in history_data:
+                        history[data[0]].append(
+                            {
+                                "file_type": "json",
+                                "save_time": data[1],
+                                "history_data": data[2]
+                            }
+                        )
+                else:
+                    history = history | history_data
+            except:
+                pass
+
+    history[file_name].append(
+        {
+            "file_type": file_type,
+            "save_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "history_data": config
+        }
     )
 
     with open(HISTORY_PATH, "w", encoding="utf-8") as f:

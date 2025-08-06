@@ -49,6 +49,7 @@ api-tools:
     point_search:
       type: point-search
       dev_name_path: /rest/fm/fms10001/listSearchTree
+      tag_info_search: /rest/database/sis/searchTagInfo
       point_path:
         通用参数: 
           /rest/eng/paramConfig/listParamNew?page=1&limit=1000&searchText=&pctypType=5&paramType=01&orderBy=&devNo=

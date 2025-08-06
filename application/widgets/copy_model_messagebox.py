@@ -6,10 +6,8 @@
 @time: 2025/7/21 09:16
 @desc: 
 """
-from PyQt5.QtWidgets import QHBoxLayout, QLabel, QFileDialog, QSizePolicy, QPushButton
-from qfluentwidgets import MessageBoxBase, SubtitleLabel, LineEdit, PushButton, ComboBox
-
-from application.utils.utils import get_icon, resource_path, get_button_style_sheet
+from PyQt5.QtWidgets import QHBoxLayout, QLabel
+from qfluentwidgets import MessageBoxBase, SubtitleLabel, LineEdit, ComboBox
 
 
 class CopyModelMessageBox(MessageBoxBase):

@@ -21,6 +21,7 @@ class PointSearcher(BaseTool):
             prefix: str,
             api_key: str,
             dev_name_path: str,
+            tag_info_search: str,
             point_path: Dict[str, str],
             max_workers: int = 10,
             **kwargs
@@ -31,6 +32,7 @@ class PointSearcher(BaseTool):
         self.dev_name_path = dev_name_path
         # 支持传入字符串或列表
         self.point_paths = point_path
+        self.tag_info_search = tag_info_search
         self.max_workers = max_workers
         # 获取设备映射，自动重试
         try:
@@ -144,41 +146,72 @@ class PointSearcher(BaseTool):
 
         return point_list
 
-    def call(self, **kwargs) -> Dict[str, Dict[str, str]]:
+    def _search_tags_info(self, search_text: str):
+        try:
+            params = {
+                "query": search_text,
+                "skipCount": 0,
+                "maxResultCount": 1000
+            }
+            print(params)
+            with httpx.Client(base_url=self.base_url, timeout=self.timeout) as client:
+                resp = client.get(self.tag_info_search, params=params, headers=self.headers)
+            resp.raise_for_status()
+            data = resp.json()
+            if data["result"]["totalCount"] > 0:
+                logger.info(f"搜索测点名请求成功: {data['result']['totalCount']} 条记录")
+                return [
+                    {
+                        "测点名": item["name"],
+                        "测点描述": item["desc"]
+                    } for item in data["result"]["items"]
+                ]
+            return []
+        except Exception as e:
+            logger.warning(f"获取设备名称失败，重试中: {e}")
+            # 重试由 tenacity 处理，若超出重试将抛出
+            raise
+
+    def call(self, **kwargs) -> Dict[str, List[Dict[str, str]]]:
         """
         并发搜索所有 dev_id 与所有 point_paths 组合的测点。
         若设备名称加载失败，会抛出异常。
         """
-        logger.info("开始并发搜索测点信息...")
-        results = defaultdict(list)
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            futures_dict = defaultdict(list)
-            for ptype, path in self.point_paths.items():
-                if "&devNo=" in path:
-                    for dev_id, dev_name in self._dev_name_dict.items():
+        print(kwargs)
+        if "search_text" in kwargs:
+            return {"时序库参数" : self._search_tags_info(kwargs["search_text"])}
+        else:
+
+            logger.info("开始并发搜索测点信息...")
+            results = defaultdict(list)
+            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                futures_dict = defaultdict(list)
+                for ptype, path in self.point_paths.items():
+                    if "&devNo=" in path:
+                        for dev_id, dev_name in self._dev_name_dict.items():
+                            future = executor.submit(
+                                self._fetch_single_dev_points,
+                                dev_name, ptype, path.replace("&devNo=", f"&devNo={dev_id}")
+                            )
+                            futures_dict[ptype].append(future)
+                    else:
                         future = executor.submit(
                             self._fetch_single_dev_points,
-                            dev_name, ptype, path.replace("&devNo=", f"&devNo={dev_id}")
+                            None, ptype, path
                         )
+
                         futures_dict[ptype].append(future)
-                else:
-                    future = executor.submit(
-                        self._fetch_single_dev_points,
-                        None, ptype, path
-                    )
 
-                    futures_dict[ptype].append(future)
-
-            for ptype in futures_dict:
-                for fut in as_completed(futures_dict[ptype]):
-                    try:
-                        data = fut.result()
-                        if len(data) == 0: continue
-                        results[ptype].extend(data)
-                    except Exception as e:
-                        logger.error(f"搜索任务异常：{e}")
-        results = sorted(results.items(), key=lambda x: x[0])
-        results = {ptype: item for ptype, item in results}
-        logger.info(f"搜索完成，总共 {sum([len(item) for _, item in results.items()])} 条测点")
+                for ptype in futures_dict:
+                    for fut in as_completed(futures_dict[ptype]):
+                        try:
+                            data = fut.result()
+                            if len(data) == 0: continue
+                            results[ptype].extend(data)
+                        except Exception as e:
+                            logger.error(f"搜索任务异常：{e}")
+            results = sorted(results.items(), key=lambda x: x[0])
+            results = {ptype: item for ptype, item in results}
+            logger.info(f"搜索完成，总共 {sum([len(item) for _, item in results.items()])} 条测点")
 
         return results

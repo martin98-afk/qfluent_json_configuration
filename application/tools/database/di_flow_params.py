@@ -56,9 +56,9 @@ class DiFlowParams(BaseTool):
             return dict(sorted(result.items(), key=lambda item: (item[1][2], item[1][3])))
 
         except OperationalError as e:
-            logger.error(f"画布流程查询失败: {e}")
+            raise OperationalError(f"画布流程查询失败: {e}")
         except Exception as e:
-            logger.error(f"画布流程查询失败: {e}")
+            raise Exception(f"画布流程查询失败: {e}")
 
     # 查询组件参数
     def get_unit_params(self, conn, unit_no):
@@ -70,7 +70,7 @@ class DiFlowParams(BaseTool):
             result = {row[0]: (row[1], row[2], row[3], row[4] == 1) for row in rows}
             return dict(sorted(result.items(), key=lambda item: item[0]))
         except OperationalError as e:
-            logger.error(f"组件参数查询失败: {e}")
+            raise Exception(f"组件参数查询失败: {e}")
 
     # 查询组件参数
     def get_node_params_value(self, conn, node_no):
@@ -82,7 +82,7 @@ class DiFlowParams(BaseTool):
             result = {row[0]: (row[1], row[2]) for row in rows}
             return dict(sorted(result.items(), key=lambda item: item[1][0]))
         except OperationalError as e:
-            logger.error(f"参数数值查询失败: {e}")
+            raise Exception(f"参数数值查询失败: {e}")
 
     def get_node_params_options(self, conn, param_no):
         try:
@@ -92,14 +92,13 @@ class DiFlowParams(BaseTool):
             rows = cur.fetchall()
             return {row[0]: row[1] for row in rows}
         except OperationalError as e:
-            logger.error(f"下拉参数候选值查询失败: {e}")
+            raise Exception(f"下拉参数候选值查询失败: {e}")
 
     def call(self, prefix: str, service_name: str):
         with psycopg2.connect(**self.conn_params) as conn:
             flow_nodes = self.get_flow_nodes(conn, service_name)
             if not flow_nodes:
-                logger.error(f"未找到 {service_name} 的流程内容！")
-                return None, None, None
+                raise Exception(f"未找到 {service_name} 的流程内容！")
 
             flow_params = {
                 value[1]: self.get_unit_params(conn, value[1])

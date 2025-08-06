@@ -46,7 +46,7 @@ from application.utils.config_handler import (
     save_config,
     HISTORY_PATH,
     PATH_PREFIX,
-    FILE_FILTER,
+    FILE_FILTER, load_history,
 )
 from application.utils.data_format_transform import list2str
 from application.utils.load_config import ParamConfigLoader
@@ -102,7 +102,7 @@ class JSONEditor(QWidget):
         self.setFont(base_font)
         # 根据 scale 计算常用间距/圆角
         self.font_size = round(10 * self.scale)
-
+        self.point_selector = PointSelectorDialog(parent=self)
         # 撤销/重做系统
         self.undo_stacks = {}  # 每个文件单独的撤销栈
         self.bind_shortcuts()
@@ -382,7 +382,7 @@ class JSONEditor(QWidget):
             font = menu.font()
             fm = QFontMetrics(font)
             item_height = fm.height() + 8
-            return item_height * len(file_list)
+            return item_height * (len(file_list) + 1)
 
         # 创建 QListWidget
         list_widget = QListWidget()
@@ -435,8 +435,9 @@ class JSONEditor(QWidget):
         menu.exec_(target_pos)
 
     def update_file_format(self, item, menu, type_name: str = None):
-        type_name = item.text() if type_name is None else type_name
-        self.file_format[self.current_file] = type_name.lower()
+        if type_name is None:
+            type_name = item.text()
+            self.file_format[self.current_file] = type_name.lower()
         self.file_type_btn.setText(type_name.upper())
         if type_name.lower() == "json":
             self.file_type_btn.setIcon(get_icon("Json"))
@@ -848,7 +849,7 @@ class JSONEditor(QWidget):
         # 切换逻辑
         self.current_file = filename
         self.tree.clear()
-        self.update_file_format(None, None, self.file_format.get(filename, 'json'))
+        self.update_file_format(None, None, self.file_format.get(filename, "json"))
         # 从 open_files 中加载配置数据并生成树节点
         self.load_tree(self.open_files[filename])
         # 恢复展开/选中状态
@@ -1182,19 +1183,14 @@ class JSONEditor(QWidget):
             self.show_status_message("正在加载测点选择器...")
 
             # 获取当前编辑路径的测点获取工具
-            fetchers = self.config.get_tools_by_path(full_path)
+            fetchers = self.config.get_tools_by_type("point-search") + self.config.get_tools_by_type("rtsp-search")
             # 创建并显示测点选择对话框
-            dlg = PointSelectorDialog(
-                fetchers=fetchers,
-                data_fetcher=self.config.get_tools_by_type("trenddb-fetcher")[0],
-                current_value=current_value,
-                parent=self
-            )
-            self.home.addSubInterface(dlg, get_icon("选择器"), '测点选择', parent=self)
-            self.home.switchTo(dlg)
-            if dlg.exec_() == QDialog.Accepted:
-                selected_point = dlg.selected_point
-                selected_description = dlg.selected_point_description
+            self.point_selector.start_fetching(fetchers, current_value)
+            self.home.addSubInterface(self.point_selector, get_icon("选择器"), '测点选择', parent=self)
+            self.home.switchTo(self.point_selector)
+            if self.point_selector.exec_() == QDialog.Accepted:
+                selected_point = self.point_selector.selected_point
+                selected_description = self.point_selector.selected_point_description
 
                 # 确保 selected_description 是字符串类型
                 selected_description = str(selected_description)
@@ -1211,7 +1207,7 @@ class JSONEditor(QWidget):
                         2000, lambda: item.setForeground(1, QColor("black"))
                     )
 
-            self.home.removeInterface(dlg)
+            self.home.removeInterface(self.point_selector)
             self.home.switchTo(self)
             restore_background()
             # —— 其他类型分支 —— #
@@ -1268,7 +1264,7 @@ class JSONEditor(QWidget):
         self.open_files[filename] = config
         self.orig_files[filename] = path
         self.file_format[filename] = path.split(".")[-1]
-        self.update_file_format(None, None, path.split(".")[-1])
+        self.update_file_format(None, None, self.file_format[filename])
         self.add_tab(filename)
         self.tab_bar.setCurrentIndex(self.tab_bar.count() - 1)
         self.switch_to_file(filename)
@@ -1280,7 +1276,7 @@ class JSONEditor(QWidget):
 
         # 获取数据并保存
         data = self.tree_to_dict()
-        file_name = f"{self.current_file}.{self.file_format.get(self.current_file, 'json')}"
+        file_name = f"{self.current_file}.{self.file_format.get(self.current_file)}"
         save_config(os.path.join(PATH_PREFIX, file_name), data)
         save_history(os.path.join(PATH_PREFIX, file_name), data)
         # 显示保存成功消息
@@ -1297,12 +1293,17 @@ class JSONEditor(QWidget):
             self.open_files.pop(old_name)
         if old_name in self.orig_files:
             self.orig_files.pop(old_name)
+        if old_name in self.file_format:
+            self.file_format[new_name] = self.file_format.pop(old_name)
+        else:
+            self.file_format[new_name] = "json"
+
         if self.current_file is not None:
             # 1. 保存当前文件配置数据
             self.open_files[new_name] = self.capture_tree_data()
             # 2. 保存展开/选中状态
             self.file_states[new_name] = self.capture_tree_state()
-            self.file_format[new_name] = self.file_format.pop(old_name)
+
             if hasattr(self, 'undo_stack'):
                 self.undo_stacks[new_name] = self.undo_stack
 
@@ -1475,7 +1476,7 @@ class JSONEditor(QWidget):
             self.open_files[filename] = config
             self.orig_files[filename] = path
             self.file_format[filename] = path.split(".")[-1]
-            self.update_file_format(None, None, path.split(".")[-1])
+            self.update_file_format(None, None, self.file_format[filename])
             self.add_tab(filename)
             self.tab_bar.setCurrentIndex(self.tab_bar.count() - 1)
             self.switch_to_file(filename)
@@ -1586,6 +1587,12 @@ class JSONEditor(QWidget):
                     worker = Worker(self.config.api_tools.get("di_flow_params"), self.model_binding_prefix,
                                     model_name)
                     worker.signals.finished.connect(lambda result: self.on_model_binded(result, data))
+                    worker.signals.error.connect(
+                        lambda: [
+                            self.unbind_model(),
+                            self.load_tree(data, parent, path_prefix, bind_model=False)
+                        ]
+                    )
                     self.thread_pool.start(worker)
                     return
             self.config.remove_binding_model_params()
@@ -1640,6 +1647,11 @@ class JSONEditor(QWidget):
                 self.lock_item(key, parent, item)
 
             item.set_item_widget()
+
+    def unbind_model(self):
+        self.config.remove_binding_model_params()
+        self.model_selector_btn.setText("<无关联模型>")
+        self.model_selector_btn.setIcon(QIcon())
 
     def on_model_binded(self, result, current_data=None):
         self.config.remove_binding_model_params()
@@ -1781,20 +1793,9 @@ class JSONEditor(QWidget):
         if not os.path.exists(HISTORY_PATH):
             return
 
-        with open(HISTORY_PATH, 'r', encoding='utf-8') as f:
-            history = json.load(f)
-
-        file_map = {}
-        for record in history:
-            file, timestamp, config = record
-            if file not in file_map:
-                file_map[file] = []
-            file_map[file].append((timestamp, config))
+        file_map = load_history()
 
         filenames = list(file_map.keys())
-
-        for versions in file_map.values():
-            versions.sort(key=lambda x: datetime.strptime(x[0], "%Y-%m-%d %H:%M:%S"), reverse=True)
 
         # 新的加载对话框
         load_history_dialog = LoadHistoryDialog(file_map, filenames, self)
@@ -1811,6 +1812,7 @@ class JSONEditor(QWidget):
                 history_filename = f"[历史]{os.path.basename(selected_file)}-{selected_version}"
                 history_filename = self.add_tab(history_filename)
                 self.open_files[history_filename] = selected_config
+                self.file_format[history_filename] = load_history_dialog.file_format
                 self.tab_bar.setCurrentIndex(self.tab_bar.count() - 1)
                 self.switch_to_file(history_filename)
 
@@ -1819,7 +1821,7 @@ class JSONEditor(QWidget):
                 compare_dialog = VersionDiffDialog(
                     selected_config, current_config,
                     lambda config: self.reload_tree(config),
-                    selected_file, selected_version
+                    selected_file, selected_version, file_map
                 )
                 self.home.addSubInterface(compare_dialog, FIF.HISTORY, '历史对比', parent=self)
                 self.home.switchTo(compare_dialog)
