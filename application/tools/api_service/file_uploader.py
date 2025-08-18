@@ -69,7 +69,7 @@ class DatasetUploader(BaseTool):
         try:
             with open(zip_path, "rb") as f:
                 files = {"file": (os.path.basename(zip_path), f)}
-                with httpx.Client(timeout=self.timeout) as client:
+                with httpx.Client(timeout=self.timeout, verify=False) as client:
                     resp = client.post(url, headers=self.headers, files=files)
                 resp.raise_for_status()
                 result = resp.json()
@@ -121,7 +121,7 @@ class DatasetUploader(BaseTool):
             "fileName": file_name,
         }
         try:
-            with httpx.Client(timeout=self.timeout) as client:
+            with httpx.Client(timeout=self.timeout, verify=False) as client:
                 resp = client.post(url, headers=self.headers, data=data)
             resp.raise_for_status()
             result = resp.json()

@@ -63,7 +63,7 @@ class ModelUploader(BaseTool):
             "flowNo[]": model_id
         }
         try:
-            with httpx.Client(timeout=self.timeout) as client:
+            with httpx.Client(timeout=self.timeout, verify=False) as client:
                 resp = client.post(url, headers=self.headers, data=data)
             resp.raise_for_status()
             result = resp.json()
@@ -71,13 +71,13 @@ class ModelUploader(BaseTool):
             if result.get("code") == 0:
                 logger.info(f"删除重复模型成功！")
             else:
-                logger.error(f"删除重复模型失败, 返回信息: {result}")
+                raise Exception(f"删除重复模型失败, 返回信息: {result}")
         except httpx.RequestError as exc:
-            logger.error(f"删除重复模型请求错误：{exc}")
+            raise Exception(f"删除重复模型请求错误：{exc}")
         except httpx.HTTPStatusError as exc:
-            logger.error(f"删除重复模型 HTTP 错误：{exc}")
+            raise Exception(f"删除重复模型 HTTP 错误：{exc}")
         except Exception as exc:
-            logger.error(f"删除重复模型时其他错误：{exc}")
+            raise Exception(f"删除重复模型时其他错误：{exc}")
 
     def _link_new_model_env(self, model_id, env_id):
         url = f"{self.base_url}{self.env_path}"
@@ -86,7 +86,7 @@ class ModelUploader(BaseTool):
             "flowNo": model_id
         }
         try:
-            with httpx.Client(timeout=self.timeout) as client:
+            with httpx.Client(timeout=self.timeout, verify=False) as client:
                 resp = client.get(url, headers=self.headers, params=params)
             resp.raise_for_status()
             result = resp.json()
@@ -94,9 +94,9 @@ class ModelUploader(BaseTool):
             if result.get("code") == 0:
                 logger.info(f"关联模型环境成功！")
             else:
-                logger.error(f"关联模型环境失败, 错误信息: {result}")
+                raise Exception(f"关联模型环境失败, 错误信息: {result}")
         except httpx.RequestError as exc:
-            logger.error(f"关联模型环境请求错误：{exc}")
+            raise Exception(f"关联模型环境请求错误：{exc}")
 
     def call(
             self,
@@ -107,7 +107,7 @@ class ModelUploader(BaseTool):
         上传文件/文件夹，自动压缩ZIP后上传，返回 {'filePath': ..., 'fileName': ...} 或 None
         """
         if not os.path.exists(file_path):
-            logger.error(f"路径不存在：{file_path}")
+            raise Exception(f"路径不存在：{file_path}")
             return None
 
         url = f"{self.base_url}{self.upload_path}"
@@ -121,7 +121,7 @@ class ModelUploader(BaseTool):
                     "fileName": os.path.basename(file_path),
                     "treeId": 0, "unitType": 0
                 }
-                with httpx.Client(timeout=self.timeout) as client:
+                with httpx.Client(timeout=self.timeout, verify=False) as client:
                     resp = client.post(url, headers=self.headers, files=files, data=data)
                 resp.raise_for_status()
                 result = resp.json()
@@ -136,8 +136,8 @@ class ModelUploader(BaseTool):
             # 关联模型运行环境
             self._link_new_model_env(model_id, env_id)
         except httpx.RequestError as exc:
-            logger.error(f"上传请求错误：{exc}")
+            raise Exception(f"上传请求错误：{exc}")
         except httpx.HTTPStatusError as exc:
-            logger.error(f"上传 HTTP 错误：{exc}")
+            raise Exception(f"上传 HTTP 错误：{exc}")
         except Exception as exc:
-            logger.error(f"上传时其他错误：{exc}")
+            raise Exception(f"上传时其他错误：{exc}")

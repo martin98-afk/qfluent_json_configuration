@@ -81,7 +81,14 @@ class FluentJSONEditor(FluentWindow):
         # 上半部分按钮
         self.addSubInterface(self.editor, FIF.HOME, '配置界面')
         trend_interface = self.addSubInterface(self.trend_analysis_dialog, get_icon("趋势分析"), '趋势分析')
-        trend_interface.clicked.connect(self.trend_analysis_dialog._load_points)
+        trend_interface.clicked.connect(
+            lambda: (
+                self.trend_analysis_dialog.param_type_combo.clear(),
+                self.trend_analysis_dialog.param_type_combo.addItems(self.editor.config.get_params_name()),
+                self.trend_analysis_dialog.param_type_combo.setCurrentIndex(0),
+                self.trend_analysis_dialog._load_points()
+            )
+        )
         service_interface = self.addSubInterface(self.service_test, get_icon("服务接口配置"), '服务测试')
         service_interface.clicked.connect(self.service_test.load_services)
         nacos_interface = self.addSubInterface(self.service_config_manager, get_icon("nacos"), 'Nacos下控服务配置')

@@ -50,7 +50,7 @@ class ModelExecute(BaseTool):
             "runTyp": run_type,
         }
         try:
-            with httpx.Client(timeout=self.timeout) as client:
+            with httpx.Client(timeout=self.timeout, verify=False) as client:
                 resp = client.post(url, headers=self.headers, json=data)
             resp.raise_for_status()
             result = resp.json()
@@ -58,13 +58,13 @@ class ModelExecute(BaseTool):
             if result.get("code") == 0:
                 logger.info(f"模型执行成功！")
             else:
-                logger.error(f"模型执行失败, 返回信息: {result}")
+                raise Exception(f"模型执行失败, 返回信息: {result}")
         except httpx.RequestError as exc:
-            logger.error(f"模型执行请求错误：{exc}")
+            raise Exception(f"模型执行请求错误：{exc}")
         except httpx.HTTPStatusError as exc:
-            logger.error(f"模型执行 HTTP 错误：{exc}")
+            raise Exception(f"模型执行 HTTP 错误：{exc}")
         except Exception as exc:
-            logger.error(f"模型执行时其他错误：{exc}")
+            raise Exception(f"模型执行时其他错误：{exc}")
 
     def call(
             self,

@@ -77,7 +77,7 @@ class ServicesTest:
     def _test_single(self, path, data) -> dict:
         if self._cancelled:
             raise Exception("Task cancelled")  # 主动抛异常，停止重试
-        with httpx.Client(timeout=self.timeout) as client:
+        with httpx.Client(timeout=self.timeout, verify=False) as client:
             resp = client.post(path, json=data)
             resp.raise_for_status()
             if resp.json()["data"].get("flag", False):

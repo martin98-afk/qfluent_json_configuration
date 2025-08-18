@@ -40,7 +40,7 @@ class ServiceReonline(BaseTool):
         :raises: 若日志获取失败时抛出异常
         """
         params = {"serviceVersionId": service_version_id}
-        with httpx.Client(base_url=self.base_url, timeout=self.timeout) as client:
+        with httpx.Client(base_url=self.base_url, timeout=self.timeout, verify=False) as client:
             resp = client.post(self.service_outline_path, data=params, headers=self.headers)
         resp.raise_for_status()
 
@@ -48,7 +48,7 @@ class ServiceReonline(BaseTool):
         if data.get("state") != "success" or data.get("code") != 0:
             raise Exception(f"接口异常: {data.get('message')}")
 
-        with httpx.Client(base_url=self.base_url, timeout=self.timeout) as client:
+        with httpx.Client(base_url=self.base_url, timeout=self.timeout, verify=False) as client:
             resp = client.post(self.service_online_path, data=params, headers=self.headers)
         resp.raise_for_status()
 

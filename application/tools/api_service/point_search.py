@@ -46,7 +46,7 @@ class PointSearcher(BaseTool):
         获取设备名称列表，带重试机制，避免超时导致失败。
         """
         try:
-            with httpx.Client(base_url=self.base_url, timeout=self.timeout) as client:
+            with httpx.Client(base_url=self.base_url, timeout=self.timeout, verify=False) as client:
                 resp = client.get(self.dev_name_path, headers=self.headers)
             resp.raise_for_status()
             data = resp.json()
@@ -83,7 +83,7 @@ class PointSearcher(BaseTool):
             point_path: str
     ) -> List[Dict[str, str]]:
         try:
-            with httpx.Client(base_url=self.base_url, timeout=self.timeout) as client:
+            with httpx.Client(base_url=self.base_url, timeout=self.timeout, verify=False) as client:
                 resp = client.get(point_path, headers=self.headers)
                 resp.raise_for_status()
                 data = resp.json()
@@ -153,7 +153,7 @@ class PointSearcher(BaseTool):
                 "skipCount": 0,
                 "maxResultCount": 1000
             }
-            with httpx.Client(base_url=self.base_url, timeout=self.timeout) as client:
+            with httpx.Client(base_url=self.base_url, timeout=self.timeout, verify=False) as client:
                 resp = client.get(self.tag_info_search, params=params, headers=self.headers)
             resp.raise_for_status()
             data = resp.json()
@@ -207,7 +207,7 @@ class PointSearcher(BaseTool):
                             if len(data) == 0: continue
                             results[ptype].extend(data)
                         except Exception as e:
-                            logger.error(f"搜索任务异常：{e}")
+                            raise Exception(f"搜索任务异常：{e}")
             results = sorted(results.items(), key=lambda x: x[0])
             results = {ptype: item for ptype, item in results}
             logger.info(f"搜索完成，总共 {sum([len(item) for _, item in results.items()])} 条测点")

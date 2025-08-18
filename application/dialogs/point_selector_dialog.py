@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (
     QAbstractItemView, QListWidget, QDateTimeEdit,
     QComboBox, QWidget, QSplitter
 )
-from qfluentwidgets import SearchLineEdit, FastCalendarPicker
+from qfluentwidgets import SearchLineEdit, FastCalendarPicker, ComboBox
 
 from application.utils.threading_utils import Worker
 from application.widgets.trend_plot_widget import TrendPlotWidget
@@ -52,10 +52,17 @@ class PointSelectorDialog(QDialog):
         pg.setConfigOptions(useOpenGL=False, antialias=False)
         # 顶部：搜索框 + 全屏
         top_layout = QHBoxLayout()
+        # 增加线上搜索与线下搜索下拉框
+        self.cmb_search_type = ComboBox(self)
+        self.cmb_search_type.addItems(["平台搜索", "本地搜索"])
+        self.cmb_search_type.setCurrentIndex(0)
+        self.cmb_search_type.currentIndexChanged.connect(self.change_search_type)
         self.search_input = SearchLineEdit()
         self.search_input.returnPressed.connect(self.filter_table)
         self.search_input.searchSignal.connect(self.filter_table)
         self.search_input.clearSignal.connect(self.filter_table)
+        top_layout.addWidget(QLabel("类型:"))
+        top_layout.addWidget(self.cmb_search_type)
         top_layout.addWidget(QLabel("搜索:"))
         top_layout.addWidget(self.search_input)
 
@@ -235,6 +242,18 @@ class PointSelectorDialog(QDialog):
         self.fetch_debounce_timer.timeout.connect(self._execute_pending_fetch)
         self.pending_fetch_params = None  # 存储待执行的参数
 
+    def change_search_type(self, type_id: int):
+        if type_id == 0:
+            self.search_input.returnPressed.connect(self.filter_table)
+            self.search_input.searchSignal.connect(self.filter_table)
+            self.search_input.clearSignal.connect(self.filter_table)
+            print("切换为线上搜索")
+        else:
+            self.search_input.returnPressed.connect(self.filter_table_offline)
+            self.search_input.searchSignal.connect(self.filter_table_offline)
+            self.search_input.clearSignal.connect(self.filter_table_offline)
+            print("切换为线下搜索")
+
     def set_curve_name(self, name: str):
         self.curve_name_label.setText(f"当前曲线: {name}")
 
@@ -306,6 +325,21 @@ class PointSelectorDialog(QDialog):
         worker = Worker(search_fetcher, search_text=kw)
         worker.signals.finished.connect(self._on_search_complete)
         self.thread_pool.start(worker)
+
+    def filter_table_offline(self):
+        kw = self.search_input.text().strip().lower()
+        rows = [p for pts in self.all_points.values() for p in pts
+                if any(kw in str(v).lower() for v in p.values())]
+        hdrs = [self.table.horizontalHeaderItem(i).text()
+                for i in range(self.table.columnCount())]
+        self.table.setSortingEnabled(False)
+        self.table.setRowCount(0)
+        for p in rows:
+            r = self.table.rowCount();
+            self.table.insertRow(r)
+            for c, h in enumerate(hdrs):
+                self.table.setItem(r, c, QTableWidgetItem(str(p.get(h, ""))))
+        self.table.setSortingEnabled(True)
 
     def _on_search_complete(self, results):
         self.all_points.update(results)

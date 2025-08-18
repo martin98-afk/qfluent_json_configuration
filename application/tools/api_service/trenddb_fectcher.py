@@ -34,9 +34,9 @@ class TrenddbFetcher(BaseTool):
             "tagNames[]": tag_name,
             "dataNum": data_num,
         }
-
+        print(data_num)
         try:
-            with httpx.Client(base_url=self.base_url) as client:
+            with httpx.Client(base_url=self.base_url, verify=False) as client:
                 response = client.get(url=self.path, params=params, timeout=self.timeout)
             if response.status_code == 200:
                 data = response.json()
@@ -53,13 +53,11 @@ class TrenddbFetcher(BaseTool):
                         values = [p["value"] for p in points]
                         return {tag_name: (np.array(times), np.array(values))}
                 else:
-                    logger.error(f"数据获取失败: {data}")
+                    raise Exception(f"数据获取失败: {data}")
             return {}
         except Exception as e:
             import traceback
-
-            logger.error(f"数据获取失败: {traceback.format_exc()}")
-            return {}
+            raise Exception(f"数据获取失败: {traceback.format_exc()}")
 
     def call_batch(
             self,
@@ -75,6 +73,7 @@ class TrenddbFetcher(BaseTool):
         返回:
             dict[tag_name] = (times: np.ndarray, values: np.ndarray)
         """
+        print(data_num)
         params = [
             ("startTime", start_time.strftime("%Y-%m-%d %H:%M:%S")),
             ("endTime", end_time.strftime("%Y-%m-%d %H:%M:%S")),
@@ -88,7 +87,7 @@ class TrenddbFetcher(BaseTool):
             name: (None, None) for name in tag_names
         }
         try:
-            with httpx.Client(base_url=self.base_url) as client:
+            with httpx.Client(base_url=self.base_url, verify=False) as client:
                 response = client.get(
                     url=self.path,
                     params=params,
@@ -120,10 +119,9 @@ class TrenddbFetcher(BaseTool):
                     f"成功获取时序数据, 测点数: {len(results)} 数据长度: {[len(value[0]) if value else 0 for value in results.values()]}"
                 )
             else:
-                logger.error(f"数据获取失败: {payload}")
+                raise Exception(f"数据获取失败: {payload}")
         except Exception as e:
             import traceback
-            logger.error(f"数据获取失败: {traceback.format_exc()}")
-            raise
+            raise Exception(f"数据获取失败: {traceback.format_exc()}")
 
         return results

@@ -37,7 +37,7 @@ class ServiceParamsFetcher(BaseTool):
                 "serviceVersionId": service_id
             }
             with httpx.Client(
-                base_url=self.base_url, timeout=self.timeout
+                base_url=self.base_url, timeout=self.timeout, verify=False
             ) as client:
                 resp = client.get(
                     self.service_params_path, params=params, headers=self.headers

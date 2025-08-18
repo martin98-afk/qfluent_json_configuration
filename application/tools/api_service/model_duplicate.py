@@ -38,7 +38,7 @@ class ModelDuplicate(BaseTool):
             "flowNo": model_id
         }
         try:
-            with httpx.Client(timeout=self.timeout) as client:
+            with httpx.Client(timeout=self.timeout, verify=False) as client:
                 resp = client.get(url, headers=self.headers, params=params)
             resp.raise_for_status()
             result = resp.json()
@@ -47,13 +47,13 @@ class ModelDuplicate(BaseTool):
                 logger.info(f"获取模型环境成功！")
                 return result.get("data").get("envId")
             else:
-                logger.error(f"获取模型环境失败, 错误信息: {result}")
+                raise Exception(f"获取模型环境失败, 错误信息: {result}")
         except httpx.RequestError as exc:
-            logger.error(f"获取模型环境请求错误：{exc}")
+            raise Exception(f"获取模型环境请求错误：{exc}")
         except httpx.HTTPStatusError as exc:
-            logger.error(f"获取模型环境 HTTP 错误：{exc}")
+            raise Exception(f"获取模型环境 HTTP 错误：{exc}")
         except Exception as exc:
-            logger.error()
+            raise Exception()
 
     def _link_new_model_env(self, new_model_id, env_id):
         url = f"{self.base_url}{self.env_path}"
@@ -70,9 +70,9 @@ class ModelDuplicate(BaseTool):
             if result.get("code") == 0:
                 logger.info(f"关联模型环境成功！")
             else:
-                logger.error(f"关联模型环境失败, 错误信息: {result}")
+                raise Exception(f"关联模型环境失败, 错误信息: {result}")
         except httpx.RequestError as exc:
-            logger.error(f"关联模型环境请求错误：{exc}")
+            raise Exception(f"关联模型环境请求错误：{exc}")
 
     def call(
             self,
@@ -100,11 +100,11 @@ class ModelDuplicate(BaseTool):
                 logger.info(f"复制模型成功！")
                 self._link_new_model_env(new_model_id, env_id)
             else:
-                logger.error(f"复制模型失败, 返回信息: {result}")
+                raise Exception(f"复制模型失败, 返回信息: {result}")
         except httpx.RequestError as exc:
-            logger.error(f"复制模型请求错误：{exc}")
+            raise Exception(f"复制模型请求错误：{exc}")
         except httpx.HTTPStatusError as exc:
-            logger.error(f"复制模型 HTTP 错误：{exc}")
+            raise Exception(f"复制模型 HTTP 错误：{exc}")
         except Exception as exc:
-            logger.error(f"复制模型时其他错误：{exc}")
+            raise Exception(f"复制模型时其他错误：{exc}")
 

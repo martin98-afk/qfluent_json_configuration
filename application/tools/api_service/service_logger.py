@@ -48,7 +48,7 @@ class ServiceLogger(BaseTool):
         """
         try:
             params = {"page": 1, "serviceId": service_id}
-            with httpx.Client(base_url=self.base_url, timeout=self.timeout) as client:
+            with httpx.Client(base_url=self.base_url, timeout=self.timeout, verify=False) as client:
                 resp = client.get(self.service_state_path, params=params, headers=self.headers)
             resp.raise_for_status()
 
@@ -81,7 +81,7 @@ class ServiceLogger(BaseTool):
         :raises: 若日志获取失败时抛出异常
         """
         params = {"serviceVersionId": service_version_id}
-        with httpx.Client(base_url=self.base_url, timeout=self.timeout) as client:
+        with httpx.Client(base_url=self.base_url, timeout=self.timeout, verify=False) as client:
             resp = client.get(self.service_log_path, params=params, headers=self.headers)
         resp.raise_for_status()
 

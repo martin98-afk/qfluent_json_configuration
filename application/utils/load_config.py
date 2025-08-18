@@ -195,6 +195,7 @@ class ParamConfigLoader(QObject):
         # 优先加载postgres工具
         logger.debug("Parallel tool load started for tools: {}", list(cfg.keys()))
         tool_list = {}
+        protocol_type = cfg.get("接口协议类型", "http")
         # 增加连接postgres数据库的工具
         if "nacos" in cfg:
             nacos_cfg = cfg.pop("nacos", {})
@@ -224,7 +225,7 @@ class ParamConfigLoader(QObject):
             cfg = cfg.get("api", cfg)
 
         def create_searcher(tool_name, cfg_tool):
-            prefix = cfg_tool.pop("prefix", f"http://{self.global_host}:{self.platform_port}")
+            prefix = cfg_tool.pop("prefix", f"{protocol_type}://{self.global_host}:{self.platform_port}")
             api_key = cfg_tool.pop("api-key", self.global_api_key)
             tool_type = cfg_tool.get("type")
             if tool_type == "point-search":

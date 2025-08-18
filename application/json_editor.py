@@ -515,13 +515,15 @@ class JSONEditor(QWidget):
             for item in model_names:
                 text_width = fm.width(item)
                 max_width = max(max_width, text_width)
+
             return max_width + 70
 
         def get_max_item_height(menu, model_names):
             font = menu.font()
             fm = QFontMetrics(font)
             item_height = fm.height() + 8
-            return min(2 * item_height * len(model_names), int(0.6 * self.window_height))
+
+            return min(item_height * len(model_names) + 10, int(0.6 * self.window_height))
 
         # 创建 QListWidget
         list_widget = QListWidget()
@@ -631,7 +633,13 @@ class JSONEditor(QWidget):
         self.model_bindings[self.current_file] = model_id
         worker = Worker(self.config.api_tools.get("di_flow_params"), self.model_binding_prefix,
                         model_id)
-        worker.signals.finished.connect(self.on_model_binded)
+        worker.signals.finished.connect(
+            lambda result: (
+                self.on_model_binded(result),
+                self.create_successbar(f"已绑定模型: {self.model_bindings.get(self.current_file)}")
+            )
+        )
+        worker.signals.error.connect(self.create_errorbar)
         self.thread_pool.start(worker)
 
     def merge_model_params(self, current_data, model_params, model_name):
@@ -683,7 +691,12 @@ class JSONEditor(QWidget):
             tree_name="0",
             tree_no="0",
         )
-        work.signals.finished.connect(self.update_config)
+        work.signals.finished.connect(lambda result: (
+                self.update_config(result),
+                self.create_successbar(f"配置上传成功！")
+            )
+        )
+        work.signals.finished.connect(self.create_errorbar)
         self.thread_pool.start(work)
 
     def update_config(self, file_upload_result):
@@ -1389,7 +1402,8 @@ class JSONEditor(QWidget):
             menu.addAction(Action(FIF.UP, "折叠全部", triggered=self.tree.collapseAll))
 
         menu.addSeparator()
-        menu.addAction(Action(FIF.SETTING, "参数设置", triggered=lambda: self._goto_structure_settings(full_path.split("/")[0])))
+        menu.addAction(
+            Action(FIF.SETTING, "参数设置", triggered=lambda: self._goto_structure_settings(full_path.split("/")[0])))
 
         menu.exec_(self.tree.viewport().mapToGlobal(pos), ani=False)
 
@@ -1582,15 +1596,22 @@ class JSONEditor(QWidget):
             model_match = re.findall(rf"{self.model_binding_prefix}(.+)", matched_key)
             if model_match:
                 model_name = model_match[0]
-                if model_name != self.model_bindings.get(self.current_file) or self.current_file not in self.model_binding_structures:
+                if model_name != self.model_bindings.get(
+                        self.current_file) or self.current_file not in self.model_binding_structures:
                     self.model_bindings[self.current_file] = model_name
                     worker = Worker(self.config.api_tools.get("di_flow_params"), self.model_binding_prefix,
                                     model_name)
-                    worker.signals.finished.connect(lambda result: self.on_model_binded(result, data))
+                    worker.signals.finished.connect(
+                        lambda result: (
+                            self.on_model_binded(result, data),
+                            self.create_successbar(f"已绑定模型: {self.model_bindings.get(self.current_file)}")
+                        )
+                    )
                     worker.signals.error.connect(
-                        lambda: [
+                        lambda e: [
                             self.unbind_model(),
-                            self.load_tree(data, parent, path_prefix, bind_model=False)
+                            self.load_tree(data, parent, path_prefix, bind_model=False),
+                            self.create_errorbar(f"模型绑定失败，错误信息：{e}")
                         ]
                     )
                     self.thread_pool.start(worker)
@@ -1680,8 +1701,6 @@ class JSONEditor(QWidget):
             # 更新撤销栈
             self.undo_stack.push(
                 TreeEditCommand(self, current_data, f"绑定模型: {self.model_bindings.get(self.current_file)}"))
-
-            self.create_successbar(f"已绑定模型: {self.model_bindings.get(self.current_file)}")
 
     def add_param(self):
         item = self.tree.currentItem()
@@ -1787,7 +1806,6 @@ class JSONEditor(QWidget):
 
         # 显示对话框
         dialog.exec()
-
 
     def load_history_menu(self):
         if not os.path.exists(HISTORY_PATH):
@@ -2053,6 +2071,8 @@ class JSONEditor(QWidget):
                     self.config.api_tools.get("model_upload"),
                     file_path, selected_env
                 )
+                worker.signals.finished.connect(lambda: self.create_successbar(f"{file_path} 上传成功！"))
+                worker.signals.error.connect(self.create_errorbar)
                 self.thread_pool.start(worker)
 
     def handle_copy_model(self):
@@ -2062,7 +2082,13 @@ class JSONEditor(QWidget):
 
         if dialog.exec():
             selected_model, new_model_name = dialog.get_text()
-            self.config.api_tools.get("model_duplicate").call(model_names[selected_model][1], new_model_name)
+            worker = Worker(
+                self.config.api_tools.get("model_duplicate"),
+                model_names[selected_model][1], new_model_name
+            )
+            worker.signals.finished.connect(lambda: self.create_successbar(f"{new_model_name} 模型复制成功！"))
+            worker.signals.error.connect(self.create_errorbar)
+            self.thread_pool.start(worker)
 
     def _goto_structure_settings(self, item_name=None):
         self.home.switchTo(self.home.config_setting)

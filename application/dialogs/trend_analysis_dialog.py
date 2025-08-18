@@ -26,7 +26,7 @@ from PyQt5.QtWidgets import (
     QStyle,
 )
 from loguru import logger
-from qfluentwidgets import FluentIcon as FIF
+from qfluentwidgets import FluentIcon as FIF, ComboBox
 from qfluentwidgets import SearchLineEdit, InfoBar, InfoBarPosition, Dialog, FastCalendarPicker, CompactTimeEdit, \
     PushButton, SwitchButton, ToolButton, TogglePushButton
 
@@ -353,32 +353,11 @@ class TrendAnalysisDialog(QDialog):
         param_label = QLabel("当前参数类型：")
         parameter_type.addWidget(param_label)
 
-        self.param_type_combo = QComboBox()
+        self.param_type_combo = ComboBox()
         self.param_types = self.parent.config.get_params_name()
         self.param_type_combo.addItems(self.param_types)
         if len(self.param_types) > 0:
             self.param_type_combo.setCurrentText(self.param_types[0])
-        self.param_type_combo.setStyleSheet(
-            """
-            QComboBox {
-                padding: 4px 8px;
-                border: 1px solid #1890ff;
-                border-radius: 4px;
-                background-color: white;
-                color: black; /* 默认字体颜色 */
-            }
-            QComboBox:hover {
-                border-color: #40a9ff;
-                color: black; /* 鼠标悬浮时字体颜色 */
-            }
-            QComboBox::drop-down {
-                subcontrol-origin: padding;
-                subcontrol-position: center right;
-                width: 20px;
-                border-left: none;
-            }
-        """
-        )
         self.param_type_combo.currentIndexChanged.connect(self._load_points)
         parameter_type.addWidget(self.param_type_combo)
         self.load_points_btn = QPushButton()
@@ -447,21 +426,9 @@ class TrendAnalysisDialog(QDialog):
         plot_label = QLabel("图表类型:")
         plot_label.setStyleSheet("color: #495057;")
         row3.addWidget(plot_label)
-        self.cmb_plot_type = QComboBox()
+        self.cmb_plot_type = ComboBox()
         self.cmb_plot_type.addItems(["曲线图 📈", "频数直方图 📊", "相关系数矩阵 🔢"])
         self.cmb_plot_type.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.cmb_plot_type.setStyleSheet("""
-            QComboBox {
-                padding: 2px 4px;
-                border: 1px solid #ced4da;
-                border-radius: 4px;
-                background-color: white;
-                color: black;
-            }
-            QComboBox:hover {
-                border-color: #40a9ff;
-            }
-        """)
         self.cmb_plot_type.currentIndexChanged.connect(self._on_plot_type_changed)
         row3.addWidget(self.cmb_plot_type)
 
@@ -498,22 +465,9 @@ class TrendAnalysisDialog(QDialog):
         sample_label = QLabel("采样:")
         sample_label.setStyleSheet("color: #495057;")
         row3.addWidget(sample_label)
-        self.cmb_sample = QComboBox()
+        self.cmb_sample = ComboBox()
         self.cmb_sample.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.cmb_sample.setStyleSheet("""
-            QComboBox {
-                padding: 2px 4px;
-                border: 1px solid #ced4da;
-                border-radius: 4px;
-                background-color: white;
-                color: black;
-            }
-            QComboBox:hover {
-                border-color: #40a9ff;
-            }
-        """)
-        for v in (600, 2000, 5000):
-            self.cmb_sample.addItem(str(v), v)
+        self.cmb_sample.addItems(["600", "2000", "5000"])
         row3.addWidget(self.cmb_sample)
 
         # 应用按钮
@@ -1171,7 +1125,7 @@ class TrendAnalysisDialog(QDialog):
             self.correlation_layout.addWidget(loading_frame)
 
         # 获取数据参数
-        sample = self.cmb_sample.currentData()
+        sample = self.cmb_sample.currentText()
         # 创建并启动数据获取工作线程
         w = Worker(
             self.parent.config.get_tools_by_type("trenddb-fetcher")[0],

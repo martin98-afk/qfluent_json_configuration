@@ -39,7 +39,7 @@ class ModelLogger(BaseTool):
             "nodeNo": node_no
         }
         try:
-            with httpx.Client(timeout=self.timeout) as client:
+            with httpx.Client(timeout=self.timeout, verify=False) as client:
                 resp = client.get(url, headers=self.headers, params=data)
             resp.raise_for_status()
             result = resp.json()
@@ -48,13 +48,13 @@ class ModelLogger(BaseTool):
                 logger.info(f"组件日志查询成功!")
                 return result["data"]["nodeLog"]
             else:
-                logger.error(f"组件日志查询失败, 返回信息: {result}")
+                raise Exception(f"组件日志查询失败, 返回信息: {result}")
         except httpx.RequestError as exc:
-            logger.error(f"组件日志查询请求错误：{exc}")
+            raise Exception(f"组件日志查询请求错误：{exc}")
         except httpx.HTTPStatusError as exc:
-            logger.error(f"组件日志查询 HTTP 错误：{exc}")
+            raise Exception(f"组件日志查询 HTTP 错误：{exc}")
         except Exception as exc:
-            logger.error(f"组件日志查询时其他错误：{exc}")
+            raise Exception(f"组件日志查询时其他错误：{exc}")
 
     def call(self, node_no: str) -> None:
         """

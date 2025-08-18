@@ -28,7 +28,7 @@ class SeviceListSearcher(BaseTool):
         获取数智服务列表，列表有服务名称、服务地址、版本id组成。
         """
         try:
-            with httpx.Client(base_url=self.base_url, timeout=self.timeout) as client:
+            with httpx.Client(base_url=self.base_url, timeout=self.timeout, verify=False) as client:
                 resp = client.get(self.service_list_path, headers=self.headers)
             resp.raise_for_status()
             data = resp.json()

@@ -2,6 +2,7 @@ title: 能耗优化参数配置工具
 api-tools:
   全局服务地址: 172.16.134.122
   平台端口: '8900'
+  接口协议类型: http
   api-key: 
     eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImtpZCI6IjAwMiJ9.eyJ0ZW5hbnROYW0iOiLnp5_miLfnrqHnkIblhazlj7giLCJvcmdOYW1lIjoi5piG6ZKiIiwiaXNzIjoiU1lTIiwidXNyUm9sZSI6IkdHU0NHTCIsInNlbGVjdGVkT3JnIjoiMTg1ODc4MTAxMjU1MzYyOTY5NiIsImFkbWluRmxnIjoiMSIsIm9yZ0lkIjoiMTg1ODc5NjUzODkxNDkzMDY4OCIsInVzck5hbSI6Iuezu-e7n-euoeeQhuWRmCIsInRlbmFudE5vIjoiMSIsIndlYlNvY2tldElwIjoiZGVmYXVsdCIsImlhdCI6MTc0OTc5NDIwMSwia2F0IjoxNzQ5Nzc0NDUwODM5fQ.rM7KBJ_UrLfriScotpdMNUspcR0xonyFM-d2NnWHLiw
   nacos:
