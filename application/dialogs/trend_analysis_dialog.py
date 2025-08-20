@@ -655,8 +655,20 @@ class TrendAnalysisDialog(QDialog):
         ]
         # 从缓存加载已有点信息
         self.local_cache = load_point_cache() or {}
+        all_items = [(t, p) for t, l in self.local_cache.items() for p in l]
+        # 左侧列表排除默认点，默认点将在_fetch后加入
+        self.left_items = []
+        selected_points = []
+        for pt in all_items:
+            if pt[1].get("测点名") in self.default_points and pt[1].get("测点名") not in selected_points:
+                self.selected_points.append(pt[1])
+                selected_points.append(pt[1].get("测点名"))
+            else:
+                self.left_items.append(pt)
         self._refresh_left()
+        self._refresh_selected()
         # 启动后台任务获取初始数据
+        self._debounced_update_trends()
         self._debounced_fetch_points()
 
     def _start_fetch(self):
@@ -682,25 +694,56 @@ class TrendAnalysisDialog(QDialog):
         self._reset_to_full_local()
 
     def _refresh_left(self):
-        """刷新左侧列表UI，使用 self.displayed_items"""
-        self.left_table.setRowCount(0)
+        """优化版：刷新左侧列表UI，避免全量重建，提高性能"""
+        # 如果没有要显示的项，清空表格
         if not self.displayed_items:
-            self.left_table.clear()
+            self.left_table.setRowCount(0)
             return
-        # 找出所有可能出现的key
+
+        # 获取表头列名
         all_keys = set()
         for _, p in self.displayed_items:
             all_keys.update(p.keys())
-        keys = ["测点名"]  # Start with 测点名
-        keys.extend([k for k in all_keys if k != "测点名"])  # Combine lists
-        self.left_table.setColumnCount(len(keys))
-        self.left_table.setHorizontalHeaderLabels(keys)
-        self.left_table.setRowCount(0)
-        for _, p in self.displayed_items:
-            r = self.left_table.rowCount()
-            self.left_table.insertRow(r)
-            for c, k in enumerate(keys):
-                self.left_table.setItem(r, c, QTableWidgetItem(str(p.get(k, ""))))
+        keys = ["测点名"] + [k for k in all_keys if k != "测点名"]
+
+        # 只有当列结构改变时才重置列
+        if self.left_table.columnCount() != len(keys):
+            self.left_table.setColumnCount(len(keys))
+            self.left_table.setHorizontalHeaderLabels(keys)
+        else:
+            # 检查列名是否一致，不一致则重置
+            current_header_labels = [self.left_table.horizontalHeaderItem(i).text() for i in
+                                     range(self.left_table.columnCount())]
+            if current_header_labels != keys:
+                self.left_table.setHorizontalHeaderLabels(keys)
+
+        # 获取当前和目标行数
+        current_row_count = self.left_table.rowCount()
+        target_row_count = len(self.displayed_items)
+
+        # 调整行数
+        if current_row_count > target_row_count:
+            # 移除多余的行
+            for _ in range(current_row_count - target_row_count):
+                self.left_table.removeRow(target_row_count)
+        elif current_row_count < target_row_count:
+            # 添加缺失的行
+            for _ in range(target_row_count - current_row_count):
+                self.left_table.insertRow(current_row_count)
+
+        # 填充数据，只更新内容，不重新创建行
+        for row_idx, (tag_type, point) in enumerate(self.displayed_items):
+            for col_idx, key in enumerate(keys):
+                value = str(point.get(key, ""))
+                # 获取或创建单元格
+                item = self.left_table.item(row_idx, col_idx)
+                if item is None:
+                    item = QTableWidgetItem(value)
+                    self.left_table.setItem(row_idx, col_idx, item)
+                else:
+                    # 只有当内容不同时才更新，减少不必要的刷新
+                    if item.text() != value:
+                        item.setText(value)
 
     def _add_point(self):
         """从左侧列表添加测点到已选列表"""
@@ -750,17 +793,17 @@ class TrendAnalysisDialog(QDialog):
         if not found or selected_point is None:
             return
 
-        # ========== 关键修改开始 ==========
+        # ========== 性能优化：增量更新 ==========
         # 1. 将找到的测点添加到已选列表
         self.selected_points.append(selected_point)
 
-        # 2. 直接从当前的 self.displayed_items 中移除该测点
-        # 这样就能保留搜索过滤后的结果
+        # 2. 直接从 displayed_items 中移除该测点
         self.displayed_items = [pt for pt in self.displayed_items if pt[1].get("测点名") != name]
 
-        # 3. 刷新左侧列表，无需重新应用搜索
-        self._refresh_left()
-        # ========== 关键修改结束 ==========
+        # 3. **关键：不再调用 _refresh_left()**
+        # 我们只移除了一个特定的行，直接用 QTableWidget 的 removeRow 方法
+        self.left_table.removeRow(row)
+        # ========== 性能优化结束 ==========
 
         # 更新已选测点列表
         self._refresh_selected()
@@ -812,7 +855,7 @@ class TrendAnalysisDialog(QDialog):
         # 更新已选测点列表
         self.selected_points = new_selected
 
-        # ========== 关键修改开始 ==========
+        # ========== 性能优化：增量更新 ==========
         # 1. 从本地缓存中找到被移除的测点的完整信息
         restored_point = None
         for tag_type, points in self.local_cache.items():
@@ -823,17 +866,25 @@ class TrendAnalysisDialog(QDialog):
             if restored_point:
                 break
 
-        # 2. 如果找到了该测点，并且它当前不在 self.displayed_items 中，则将其加回去
+        # 2. 如果找到了该测点，并且它当前不在 displayed_items 中，则将其加回去
         if restored_point and restored_point[1] not in [pt[1] for pt in self.displayed_items]:
-            # 检查是否已经在 selected_points 中（理论上不应该，但保险起见）
+            # 检查是否已经在 selected_points 中
             if restored_point[1] not in self.selected_points:
+                # 将测点添加回 displayed_items
                 self.displayed_items.append(restored_point)
                 # 保持列表有序（可选）
                 self.displayed_items.sort(key=lambda x: x[1].get("测点名", ""))
 
-        # 3. 重新刷新左侧列表
-        self._refresh_left()
-        # ========== 关键修改结束 ==========
+                # **关键：直接在表格末尾插入一行，而不是刷新整个列表**
+                new_row = self.left_table.rowCount()
+                self.left_table.insertRow(new_row)
+                # 使用当前的表头
+                current_keys = [self.left_table.horizontalHeaderItem(i).text() for i in
+                                range(self.left_table.columnCount())]
+                for col_idx, key in enumerate(current_keys):
+                    value = str(restored_point[1].get(key, ""))
+                    self.left_table.setItem(new_row, col_idx, QTableWidgetItem(value))
+        # ========== 性能优化结束 ==========
 
         # 在左侧列表中查找并高亮刚移除的测点
         for row_idx in range(self.left_table.rowCount()):
@@ -1288,11 +1339,6 @@ class TrendAnalysisDialog(QDialog):
         self.trend_plot_layout.addWidget(chart_wrapper)
         # 创建新的趋势图
         self.trend_plot = TrendPlotWidget(home=self.home)
-        # 设置趋势图样式
-        self.trend_plot.setBackground("w")  # 白色背景
-        self.trend_plot.showGrid(x=True, y=True, alpha=0.3)  # 显示网格线
-        # 确保tooltip不会使用无效的矩形
-        self.trend_plot.tooltip_widget.rect = QRect(0, 0, 300, 200)  # 提供默认矩形
         # 连接标记相关信号
         self.trend_plot_layout.addWidget(self.trend_plot, 1)  # 图表占据大部分空间
         # 创建信息区域显示数据统计
