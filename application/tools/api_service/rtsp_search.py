@@ -94,7 +94,7 @@ class RTSPSearcher(BaseTool):
             for pt, nm in zip(previewUrl, cameraName):
                 point_dict = {
                     "设备名": dev_name,
-                    "监控点名称": nm,
+                    "测点描述": nm,
                     "测点名": pt
                 }
             point_list.append(point_dict)

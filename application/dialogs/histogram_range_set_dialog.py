@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QComboBox, QToolTip
 )
-from qfluentwidgets import FastCalendarPicker, CompactDoubleSpinBox
+from qfluentwidgets import FastCalendarPicker, CompactDoubleSpinBox, ComboBox
 
 from application.dialogs.range_input_dialog import RangeInputDialog
 from application.dialogs.range_list_dialog import RangeListDialog
@@ -65,31 +65,10 @@ class IntervalPartitionDialog(QDialog):
 
         # 采样数
         ctrl.addWidget(QLabel('采样数:'))
-        self.cmb_sample = QComboBox(self)
+        self.cmb_sample = ComboBox(self)
         for v in (600, 2000, 5000):
             self.cmb_sample.addItem(str(v), v)
         self.cmb_sample.setCurrentIndex(1)
-        self.cmb_sample.setStyleSheet(
-            """
-            QComboBox {
-                padding: 4px 8px;
-                border: 1px solid #1890ff;
-                border-radius: 4px;
-                background-color: white;
-                color: black; /* 默认字体颜色 */
-            }
-            QComboBox:hover {
-                border-color: #40a9ff;
-                color: black; /* 鼠标悬浮时字体颜色 */
-            }
-            QComboBox::drop-down {
-                subcontrol-origin: padding;
-                subcontrol-position: center right;
-                width: 20px;
-                border-left: none;
-            }
-        """
-        )
         ctrl.addWidget(self.cmb_sample)
 
         # 分箱宽度

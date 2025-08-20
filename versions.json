@@ -1,6 +1,17 @@
 [
   {
-    "version": "1.2.9",
+    "version": "1.3.0",
+    "publishDate": "2025-08-18 11:13",
+    "forceUpdate": true,
+    "publishNotes": [
+      "refactor(dialogs): 重构测点选择对话框",
+      "- 重新设计了对话框的布局和样式，提高了用户体验",
+      "- 优化了测点搜索和筛选功能，支持线上和线下搜索",
+      "- 改进了趋势分析面板，增加了统计信息显示",
+      "- 重构了代码结构，提高了可维护性和可扩展性"
+    ]
+  },{
+    "version": "1.2.8",
     "publishDate": "2025-08-18 11:13",
     "forceUpdate": true,
     "publishNotes": [

@@ -73,7 +73,6 @@ class TrenddbFetcher(BaseTool):
         返回:
             dict[tag_name] = (times: np.ndarray, values: np.ndarray)
         """
-        print(data_num)
         params = [
             ("startTime", start_time.strftime("%Y-%m-%d %H:%M:%S")),
             ("endTime", end_time.strftime("%Y-%m-%d %H:%M:%S")),

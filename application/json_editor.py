@@ -691,11 +691,7 @@ class JSONEditor(QWidget):
             tree_name="0",
             tree_no="0",
         )
-        work.signals.finished.connect(lambda result: (
-                self.update_config(result),
-                self.create_successbar(f"配置上传成功！")
-            )
-        )
+        work.signals.finished.connect(lambda result: self.update_config(result))
         work.signals.finished.connect(self.create_errorbar)
         self.thread_pool.start(work)
 
@@ -737,6 +733,7 @@ class JSONEditor(QWidget):
 
         self.undo_stack.push(TreeEditCommand(self, old_state, f"更新文件地址为: {file_url}"))
         self.show_status_message(f"文件地址已同步到: {selected_path}", "success")
+        self.create_successbar(f"配置上传成功！")
 
     def capture_tree_state(self):
         """

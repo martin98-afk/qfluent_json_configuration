@@ -138,7 +138,7 @@ class ParamConfigLoader(QObject):
         self.global_api_key = cfg.pop("api-key", "")
         if "nacos" in cfg:
             # 导入nacos工具
-            type_cfg = {"nacos": cfg["nacos"]}
+            type_cfg = {"nacos": cfg["nacos"], "接口协议类型": cfg.get("接口协议类型", "http")}
             logger.info(f"Launching asynchronous nacos tools load!")
             worker = Worker(self._load_tools_parallel, type_cfg)
             worker.signals.finished.connect(
@@ -156,7 +156,7 @@ class ParamConfigLoader(QObject):
 
         if "api" in cfg:
             # 导入接口工具
-            type_cfg = {"api": cfg["api"]}
+            type_cfg = {"api": cfg["api"], "接口协议类型": cfg.get("接口协议类型", "http")}
             logger.info(f"Launching asynchronous api tools load!")
             worker = Worker(self._load_tools_parallel, type_cfg)
             worker.signals.finished.connect(
