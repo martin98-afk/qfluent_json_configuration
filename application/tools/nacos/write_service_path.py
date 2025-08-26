@@ -21,19 +21,18 @@ class WriteNacosServicePath(BaseTool):
                  namespace="test-nhyh",
                  parent=None, **kwargs):
         super().__init__(parent)
-        self.eeoptimize_config = NacosConfig(
-            **{"host": host,
-               "username": username,
-               "password": password,
-               "data_id": data_id,
-               "group": group,
-               "namespace": namespace}
-        )
+        self.nacos_kwargs = {"host": host,
+                             "username": username,
+                             "password": password,
+                             "data_id": data_id,
+                             "group": group,
+                             "namespace": namespace}
 
     def call(self, service_urls: list[str]):
         """
         param:
         service_list: 服务列表：【服务名称，服务url】
         """
-        self.eeoptimize_config.raw["modelsUrl"] = ",".join(service_urls)
-        self.eeoptimize_config.write()
+        eeoptimize_config = NacosConfig(**self.nacos_kwargs)
+        eeoptimize_config.raw["modelsUrl"] = ",".join(service_urls)
+        eeoptimize_config.write()

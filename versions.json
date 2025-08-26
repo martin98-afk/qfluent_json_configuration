@@ -1,5 +1,16 @@
 [
   {
+    "version": "1.3.1",
+    "publishDate": "2025-08-18 11:13",
+    "forceUpdate": true,
+    "publishNotes": [
+      "refactor(application): 修复nacos配置读取未及时同步在线配置",
+      "- 修改 nacos 配置处理方式，提高代码复用性",
+      "- 优化点选择对话框布局和功能",
+      "- 调整趋势分析对话框样式和行为",
+      "- 移除不必要的打印语句"
+    ]
+  },{
     "version": "1.3.0",
     "publishDate": "2025-08-18 11:13",
     "forceUpdate": true,

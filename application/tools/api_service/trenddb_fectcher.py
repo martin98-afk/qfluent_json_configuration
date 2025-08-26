@@ -34,7 +34,6 @@ class TrenddbFetcher(BaseTool):
             "tagNames[]": tag_name,
             "dataNum": data_num,
         }
-        print(data_num)
         try:
             with httpx.Client(base_url=self.base_url, verify=False) as client:
                 response = client.get(url=self.path, params=params, timeout=self.timeout)

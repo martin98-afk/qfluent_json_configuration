@@ -69,7 +69,7 @@ class PointSelectorDialog(QDialog):
         top_layout.setSpacing(10)
 
         self.cmb_search_type = ComboBox()
-        self.cmb_search_type.addItems(["平台搜索", "本地搜索"])
+        self.cmb_search_type.addItems(["本地搜索", "平台搜索"])
         self.cmb_search_type.setFixedWidth(100)
         self.cmb_search_type.currentIndexChanged.connect(self.on_search_type_changed)
 
@@ -78,7 +78,7 @@ class PointSelectorDialog(QDialog):
         self.search_input.searchSignal.connect(self.on_search)
         self.search_input.clearSignal.connect(self.on_search_clear)
 
-        top_layout.addWidget(QLabel("类型:"))
+        top_layout.addWidget(QLabel("搜索类型:"))
         top_layout.addWidget(self.cmb_search_type)
         top_layout.addWidget(QLabel("搜索:"))
         top_layout.addWidget(self.search_input, 1)
@@ -262,7 +262,7 @@ class PointSelectorDialog(QDialog):
         right_layout.setStretch(0, 0)  # 手动输入
         right_layout.setStretch(1, 1)  # 表格（占满）
         right_layout.setStretch(2, 0)  # 按钮
-        right_layout.setStretch(3, 0)  # 趋势面板
+        right_layout.setStretch(3, 1)  # 趋势面板
 
         # 添加到 splitter
         splitter.addWidget(left_container)
@@ -318,9 +318,9 @@ class PointSelectorDialog(QDialog):
     def on_search_type_changed(self, index):
         self.search_input.searchSignal.disconnect()
         if index == 0:
-            self.search_input.searchSignal.connect(self.on_search)
-        else:
             self.search_input.searchSignal.connect(self.filter_table_offline)
+        else:
+            self.search_input.searchSignal.connect(self.on_search)
 
     def on_search(self):
         kw = self.search_input.text().strip()
@@ -420,7 +420,7 @@ class PointSelectorDialog(QDialog):
             # 展开
             self.trend_panel.show()
             self.trend_anim.setStartValue(0)
-            self.trend_anim.setEndValue(400)  # 更高
+            self.trend_anim.setEndValue(800)  # 更高
             self.btn_toggle_trend.setText("收起趋势分析")
             self.btn_toggle_trend.setIcon(FIF.REMOVE)
             self.trend_expanded = True

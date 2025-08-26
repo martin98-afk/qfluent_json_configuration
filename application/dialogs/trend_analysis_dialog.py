@@ -352,6 +352,7 @@ class TrendAnalysisDialog(QDialog):
             QTableWidget {
                 gridline-color: #e9ecef;
                 selection-background-color: #e7f5ff;
+                selection-color: #212529;
             }
             QTableWidget::item {
                 padding: 4px;
@@ -665,6 +666,7 @@ class TrendAnalysisDialog(QDialog):
                 selected_points.append(pt[1].get("测点名"))
             else:
                 self.left_items.append(pt)
+        self._reset_to_full_local()
         self._refresh_left()
         self._refresh_selected()
         # 启动后台任务获取初始数据
@@ -673,8 +675,6 @@ class TrendAnalysisDialog(QDialog):
 
     def _start_fetch(self):
         # 没有切到当前界面就不进行抓取
-        if self.home.stackedWidget.currentWidget().objectName() != self.objectName():
-            return
         w = Worker(self.parent.config.get_tools_by_type("point-search"))
         w.signals.finished.connect(self._on_fetch)
         w.signals.error.connect(self._fetch_error)
