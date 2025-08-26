@@ -52,6 +52,12 @@ class TrendPlotWidget(pg.PlotWidget):
         self._tooltip_active = False
         vb = self.plotItem.vb
         vb.setAutoPan(x=False, y=False)
+
+        # ---- 新增：独立 Y 轴相关 ----
+        self.independent_y = False  # False = 共享y轴；True = 每条曲线独立 y 轴
+        self.extra_vbs = []  # 存放为每条曲线创建的 ViewBox
+        self.right_axes = []  # 对应右侧 AxisItem 列表
+
         # 基础绘图
         self.setBackground('w')
         self.showGrid(x=True, y=True, alpha=0.3)
@@ -59,20 +65,20 @@ class TrendPlotWidget(pg.PlotWidget):
         if legend:
             self.addLegend(offset=(1, 1))
 
-        # 时间轴
+        # 时间轴（不变）
         axis = pg.DateAxisItem(orientation='bottom')
         axis.setStyle(tickTextOffset=10, tickFont=QFont("Microsoft YaHei", 9))
         axis.setTickSpacing(major=3600 * 6, minor=3600)
         self.setAxisItems({'bottom': axis})
 
-        # 区域选择
+        # 区域选择（不变）
         self.region = pg.LinearRegionItem(brush=(0, 200, 0, 100), pen=QColor(0, 200, 0))
         self.region.setCacheMode(QGraphicsItem.DeviceCoordinateCache)
         self.region.setZValue(1000)
         self.region.hide()
         self.plotItem.vb.addItem(self.region)
 
-        # 十字光标
+        # 十字光标（主 viewbox 上）
         self.crosshair = pg.InfiniteLine(
             angle=90,
             pen=pg.mkPen(QColor('#999999'), width=1, style=Qt.DashLine)
@@ -83,7 +89,7 @@ class TrendPlotWidget(pg.PlotWidget):
 
         # 曲线存储
         self.curves = []
-        # 同时清除所有其他项，如文本标签、图例等
+        # 清除其它项（保持你的原逻辑）
         for item in self.items():
             if not isinstance(item, pg.AxisItem) and not isinstance(item, pg.GridItem):
                 self.removeItem(item)
@@ -98,6 +104,57 @@ class TrendPlotWidget(pg.PlotWidget):
         # 区域选择状态
         self._is_selecting = False
         self._select_start = None
+
+        self._right_axis_spacing = 70  # 多个右轴之间的水平间距（像素）
+        self._right_axis_width = 58  # 每个右轴的宽度（像素）
+
+        def update_views():
+            # 让额外的 viewbox 与主 viewbox 对齐
+            vb_rect = self.plotItem.vb.sceneBoundingRect()
+            for vb_extra in self.extra_vbs:
+                vb_extra.setGeometry(vb_rect)
+                vb_extra.linkedViewChanged(self.plotItem.vb, vb_extra.XAxis)
+
+            # 手动布局右侧多个 AxisItem，避免堆叠到右上角
+            for j, ax in enumerate(self.right_axes):
+                x = vb_rect.right() + j * self._right_axis_spacing
+                ax.setGeometry(QRectF(x, vb_rect.top(), self._right_axis_width, vb_rect.height()))
+
+        self._update_views = update_views
+        self.plotItem.vb.sigResized.connect(self._update_views)
+        self.plotItem.vb.setZValue(100)
+
+    def set_independent_y(self, enable: bool):
+        """切换是否为每条曲线独立 Y 轴，并在切换后重绘已有数据（如果有）"""
+        enable = bool(enable)
+        if enable == bool(self.independent_y):
+            return
+        self.independent_y = enable
+
+        # 清理已有的额外 viewboxes / axes
+        for vb in list(self.extra_vbs):
+            try:
+                # 移除 viewbox
+                self.plotItem.scene().removeItem(vb)
+            except Exception:
+                pass
+        self.extra_vbs.clear()
+
+        for ax in list(self.right_axes):
+            try:
+                self.plotItem.layout.removeItem(ax)
+                self.plotItem.scene().removeItem(ax)
+            except Exception:
+                pass
+        self.right_axes.clear()
+
+        # 如果切回共享 y ，显示主左轴刻度；否则隐藏主左轴刻度
+        self.plotItem.getAxis('left').setStyle(showValues=not self.independent_y)
+
+        # 如果之前画过曲线，则重新绘制，使新模式生效
+        if getattr(self, "_last_data", None) is not None:
+            # 注意：plot_multiple 内部也会读取 self.independent_y 来决定绘制方式
+            self.plot_multiple(self._last_data, self._last_mode)
 
     def wheelEvent(self, ev):
         vb = self.plotItem.vb
@@ -116,70 +173,200 @@ class TrendPlotWidget(pg.PlotWidget):
             super().mouseDoubleClickEvent(ev)
 
     def plot_multiple(self, data, mode: str = "line"):
-        # 清除并批量添加曲线
+        # 保存以便后续切换模式时重绘
+        self._last_data = data
+        self._last_mode = mode
+        # 先清除旧曲线（主 plotItem / 额外 viewboxes 中都清理）
         for c in self.curves:
-            self.plotItem.removeItem(c)
+            try:
+                # 可能 curve 在主 plotItem 或者在某个 vb 中
+                parent = c.getViewBox() if hasattr(c, 'getViewBox') else None
+                if parent is not None:
+                    parent.removeItem(c)
+                else:
+                    self.plotItem.removeItem(c)
+            except Exception:
+                try:
+                    self.plotItem.removeItem(c)
+                except Exception:
+                    pass
         self.curves.clear()
+
+        # === 清空 legend ===
+        if hasattr(self.plotItem, 'legend') and self.plotItem.legend is not None:
+            try:
+                # 1. 移除 legend 中的所有曲线项
+                for sample, label in list(self.plotItem.legend.items):
+                    self.plotItem.legend.removeItem(label.text)
+                # 2. 移除 legend 控件
+                self.plotItem.removeItem(self.plotItem.legend)
+            except Exception:
+                pass
+            self.plotItem.legend = None
+
+        # === 如果需要 legend，重新创建 ===
+        if self.kwargs.get("legend", True):
+            self.plotItem.addLegend(offset=(1, 1))
+
+        # 如果之前存在额外 viewboxes/axes，需要清理（例如从独立切回共享之前）
+        if not self.independent_y and (self.extra_vbs or self.right_axes):
+            self.set_independent_y(False)  # 清理所有额外控件
+
         all_y = []
         x = None
-        for i, (tag, points) in enumerate(data.items()):
-            if not points:
-                continue
-            x, y = points
-            # 动态生成颜色
-            hue = i / len(data)
-            qcolor = QColor.fromHsvF(hue, 0.7, 0.9)
-            color_str = qcolor.name()
-            if mode == "fill":
-                curve = pg.PlotDataItem(
-                    x=x, y=y,
-                    pen=pg.mkPen(color_str, width=2),
-                    name=tag,
-                    **{
-                        "fillLevel": min(y),
-                        "fillBrush": pg.mkBrush(
-                            QColor(color_str).lighter(180)
-                        )
-                    }
-                )
-            elif mode == "line":
-                curve = pg.PlotDataItem(
-                    x=x, y=y,
-                    pen=pg.mkPen(color_str, width=2),
-                    name=tag,
-                    symbol=None
-                )
-            elif mode == "scatter":
-                curve = pg.ScatterPlotItem(
-                    x=x, y=y,
-                    pen=pg.mkPen(color_str, width=2),
-                    name=tag,
-                    **{
-                        "symbol": "o",
-                        "brush": pg.mkBrush(color_str),
-                        "size": 5,
-                    }
-                )
-            else:
-                logger.error(f"Invalid mode: {mode}")
-                raise ValueError
-            if mode != "scatter":
-                curve.setDownsampling(auto=True, method='peak')
-                curve.setClipToView(True)
-            curve.setZValue(0)  # 保证曲线在最下面
-            self.plotItem.addItem(curve)
-            self.curves.append(curve)
-            all_y.append(np.array(y))
 
-        if x is not None:
-            self.plotItem.setXRange(x[0] - 2500, x[-1] + 1000, padding=0)
+        if not self.independent_y:
+            # 共享 y 轴：与原来逻辑一致
+            for i, (tag, points) in enumerate(data.items()):
+                if not points:
+                    continue
+                x, y = points
+                hue = i / max(1, len(data))
+                qcolor = QColor.fromHsvF(hue, 0.7, 0.9)
+                color_str = qcolor.name()
+                if mode == "fill":
+                    curve = pg.PlotDataItem(
+                        x=x, y=y,
+                        pen=pg.mkPen(color_str, width=2),
+                        name=tag,
+                        **{
+                            "fillLevel": min(y),
+                            "fillBrush": pg.mkBrush(QColor(color_str).lighter(180))
+                        }
+                    )
+                elif mode == "line":
+                    curve = pg.PlotDataItem(x=x, y=y, pen=pg.mkPen(color_str, width=2), name=tag, symbol=None)
+                elif mode == "scatter":
+                    curve = pg.ScatterPlotItem(
+                        x=x, y=y,
+                        pen=pg.mkPen(color_str, width=2),
+                        name=tag,
+                        **{"symbol": "o", "brush": pg.mkBrush(color_str), "size": 5}
+                    )
+                else:
+                    logger.error(f"Invalid mode: {mode}")
+                    raise ValueError
 
-        # Y 轴范围及留白
-        if all_y:
-            arr = np.hstack(all_y)
-            mn, mx = arr.min(), arr.max()
-            pad = (mx - mn) * 0.1
-            self.plotItem.vb.setYRange(mn - pad, mx + pad, padding=0)
+                if mode != "scatter":
+                    curve.setDownsampling(auto=True, method='peak')
+                    curve.setClipToView(True)
+                curve.setZValue(0)
+                self.plotItem.addItem(curve)
+                self.curves.append(curve)
+                all_y.append(np.array(y))
+
+            # X 范围与 Y 范围
+            if x is not None:
+                self.plotItem.setXRange(x[0] - 2500, x[-1] + 1000, padding=0)
+
+            if all_y:
+                arr = np.hstack(all_y)
+                mn, mx = arr.min(), arr.max()
+                pad = (mx - mn) * 0.1 if mx != mn else 1.0
+                self.plotItem.vb.setYRange(mn - pad, mx + pad, padding=0)
+        else:
+            # 独立 y 轴模式：为每条曲线创建独立 ViewBox + 独立右侧 AxisItem
+            self.plotItem.getAxis('left').setStyle(showValues=False)  # 隐藏主左轴刻度
+
+            # 清理旧 viewbox / 右轴
+            for vb in self.extra_vbs:
+                try:
+                    self.plotItem.scene().removeItem(vb)
+                except Exception:
+                    pass
+            self.extra_vbs.clear()
+            for ax in self.right_axes:
+                try:
+                    self.plotItem.scene().removeItem(ax)
+                except Exception:
+                    pass
+            self.right_axes.clear()
+            # 获取主 viewbox 几何，用于定位右轴
+            vb_rect = self.plotItem.vb.sceneBoundingRect()
+            num_curves = len(data)
+            right_axis_spacing = 70  # 每条右轴水平间隔像素
+            for i, (tag, points) in enumerate(data.items()):
+                if not points:
+                    continue
+                x, y = points
+                hue = i / max(1, num_curves)
+                qcolor = QColor.fromHsvF(hue, 0.7, 0.9)
+                color_str = qcolor.name()
+
+                # 创建独立 ViewBox
+                vb_extra = pg.ViewBox(enableMouse=False)  # 这里先禁用
+                vb_extra.setXLink(self.plotItem.vb)  # X 轴同步
+                vb_extra.setMouseEnabled(x=False, y=False)  # 禁止额外 viewbox 处理拖拽
+                vb_extra.setAcceptHoverEvents(False)  # 禁止悬停事件
+                vb_extra.setAcceptedMouseButtons(Qt.NoButton)  # 不接收鼠标点击
+                vb_extra.setZValue(-10)
+                self.plotItem.scene().addItem(vb_extra)
+                self.extra_vbs.append(vb_extra)
+
+                # 创建右侧 Y 轴
+                axis = pg.AxisItem('right')
+                axis.setLabel(tag, color=color_str)  # 这里可以直接用 color
+                axis.setStyle(
+                    tickFont=QFont("Microsoft YaHei", 9),
+                    tickTextOffset=5
+                )
+                # 颜色不要放在 setStyle 里，用专用 API：
+                axis.setPen(pg.mkPen(color_str))  # 刻度线和轴线的颜色
+                axis.setTextPen(pg.mkPen(color_str))  # 刻度文字颜色
+
+                axis.linkToView(vb_extra)
+                axis.setZValue(1000)
+                self.plotItem.scene().addItem(axis)
+                self.right_axes.append(axis)
+
+                # 动态设置右轴的位置
+                axis.setPos(vb_rect.right() + i * right_axis_spacing, vb_rect.top())
+
+                # 添加曲线到该 viewbox
+                if mode == "fill":
+                    curve = pg.PlotDataItem(
+                        x=x, y=y, pen=pg.mkPen(color_str, width=2), name=tag,
+                        fillLevel=min(y),
+                        fillBrush=pg.mkBrush(QColor(color_str).lighter(180))
+                    )
+                elif mode == "line":
+                    curve = pg.PlotDataItem(
+                        x=x, y=y, pen=pg.mkPen(color_str, width=2), name=tag
+                    )
+                elif mode == "scatter":
+                    curve = pg.ScatterPlotItem(
+                        x=x, y=y,
+                        pen=pg.mkPen(color_str, width=2),
+                        name=tag,
+                        symbol="o",
+                        brush=pg.mkBrush(color_str),
+                        size=5
+                    )
+                else:
+                    logger.error(f"Invalid mode: {mode}")
+                    raise ValueError
+
+                if mode != "scatter":
+                    curve.setDownsampling(auto=True, method='peak')
+                    curve.setClipToView(True)
+
+                if self.plotItem.legend is None:
+                    self.plotItem.addLegend(offset=(1, 1))
+                self.plotItem.legend.addItem(curve, tag)
+
+                vb_extra.addItem(curve)
+                self.curves.append(curve)
+
+                # 设置 y 范围
+                mn, mx = np.min(y), np.max(y)
+                pad = (mx - mn) * 0.1 if mx != mn else 1.0
+                vb_extra.setYRange(mn - pad, mx + pad, padding=0)
+
+            # X 范围由主 plotItem 控制
+            if x is not None:
+                self.plotItem.setXRange(x[0] - 2500, x[-1] + 1000, padding=0)
+            # 同步几何
+            self._update_views()
 
         # 确保 region 与 crosshair 在最上层
         self.region.setZValue(1000)

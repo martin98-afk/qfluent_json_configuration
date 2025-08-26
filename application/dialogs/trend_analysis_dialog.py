@@ -26,7 +26,7 @@ from PyQt5.QtWidgets import (
     QStyle,
 )
 from loguru import logger
-from qfluentwidgets import FluentIcon as FIF, ComboBox
+from qfluentwidgets import FluentIcon as FIF, ComboBox, SwitchButton, CommandBar, Action, TransparentTogglePushButton
 from qfluentwidgets import SearchLineEdit, InfoBar, InfoBarPosition, Dialog, FastCalendarPicker, CompactTimeEdit, \
     ToolButton, TogglePushButton
 
@@ -380,23 +380,22 @@ class TrendAnalysisDialog(QDialog):
         control_layout = QVBoxLayout(control_frame)
         control_layout.setContentsMargins(8, 6, 8, 6)
         control_layout.setSpacing(6)
+
         # 控制行
         row3 = QHBoxLayout()
-        row3.setSpacing(8)
+        self.commandBar_row3 = CommandBar(self)
+        self.commandBar_row3.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        row3.addWidget(self.commandBar_row3, 0)
         # 图表类型选择
-        plot_label = QLabel("图表类型:")
-        plot_label.setStyleSheet("color: #495057;")
-        row3.addWidget(plot_label)
+        self.commandBar_row3.addWidget(QLabel("图表类型:"))
         self.cmb_plot_type = ComboBox()
         self.cmb_plot_type.addItems(["曲线图 📈", "频数直方图 📊", "相关系数矩阵 🔢"])
         self.cmb_plot_type.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.cmb_plot_type.currentIndexChanged.connect(self._on_plot_type_changed)
-        row3.addWidget(self.cmb_plot_type)
-        row3.addStretch()  # 添加弹性空间
+        self.commandBar_row3.addWidget(self.cmb_plot_type)
+        self.commandBar_row3.addSeparator()
         # 时间选择
-        start_label = QLabel("开始:")
-        start_label.setStyleSheet("color: #495057;")
-        row3.addWidget(start_label)
+        self.commandBar_row3.addWidget(QLabel("开始:"))
         current_datetime = QDateTime.currentDateTime()
         start_datetime = current_datetime.addSecs(-12 * 3600)
         self.start_dt = FastCalendarPicker(self)
@@ -409,21 +408,19 @@ class TrendAnalysisDialog(QDialog):
         self.end_time_edit = CompactTimeEdit(self)
         self.end_time_edit.setTimeRange(QTime(0, 0), QTime(23, 59))
         self.end_time_edit.setTime(current_datetime.time())
-        row3.addWidget(self.start_dt)
-        row3.addWidget(self.start_time_edit)
+        self.commandBar_row3.addWidget(self.start_dt)
+        self.commandBar_row3.addWidget(self.start_time_edit)
         end_label = QLabel("结束:")
-        end_label.setStyleSheet("color: #495057;")
-        row3.addWidget(end_label)
-        row3.addWidget(self.end_dt)
-        row3.addWidget(self.end_time_edit)
+        self.commandBar_row3.addWidget(end_label)
+        self.commandBar_row3.addWidget(self.end_dt)
+        self.commandBar_row3.addWidget(self.end_time_edit)
         # 采样选择
         sample_label = QLabel("采样:")
-        sample_label.setStyleSheet("color: #495057;")
-        row3.addWidget(sample_label)
+        self.commandBar_row3.addWidget(sample_label)
         self.cmb_sample = ComboBox()
         self.cmb_sample.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.cmb_sample.addItems(["600", "2000", "5000"])
-        row3.addWidget(self.cmb_sample)
+        self.commandBar_row3.addWidget(self.cmb_sample)
         # 应用按钮
         self.btn_apply = QPushButton()
         self.btn_apply.setIcon(get_icon("change"))
@@ -432,7 +429,7 @@ class TrendAnalysisDialog(QDialog):
         self.btn_apply.setStyleSheet(get_button_style_sheet())
         self.btn_apply.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.btn_apply.clicked.connect(self._update_trends)
-        row3.addWidget(self.btn_apply)
+        self.commandBar_row3.addWidget(self.btn_apply)
         control_layout.addLayout(row3)
         right_layout.addWidget(control_frame)
         # 图表区域
@@ -1246,6 +1243,7 @@ class TrendAnalysisDialog(QDialog):
 
     def _show_trend_plot(self):
         """显示曲线图"""
+        self._current_plot_mode = 0  # 默认为标准线图
         # 清除旧的趋势图控件，但保留trend_plot和data_stats_frame
         for i in reversed(range(self.trend_plot_layout.count())):
             item = self.trend_plot_layout.itemAt(i)
@@ -1275,27 +1273,28 @@ class TrendAnalysisDialog(QDialog):
         wrapper_layout.setContentsMargins(10, 5, 10, 5)
         # 创建标题和图例区域
         header = QHBoxLayout()
-        title = QLabel("趋势曲线图")
-        title.setStyleSheet("font-weight: bold; color: #1864ab; font-size: 13px;")
-        header.addWidget(title)
-        self._current_plot_mode = 0  # 默认为标准线图
+        self.commandBar = CommandBar(self)
+        self.commandBar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        header.addWidget(self.commandBar, 0)
+        self.commandBar.addWidget(QLabel("趋势曲线图"))
+        self.commandBar.addSeparator()
         # 增加时间标记功能
         # 划分开关按钮
-        self.btn_partition = TogglePushButton(FIF.PIN, '标记模式', self)
-        self.btn_partition.toggled.connect(self._on_partition_toggled)
-        header.addWidget(self.btn_partition)
-        # 曲线颜色
+        self.switchButton = TransparentTogglePushButton('共享y轴', self)
+        self.switchButton.toggled.connect(self.onCheckedChanged)
+        self.commandBar.addWidget(self.switchButton)
+        self.commandBar.addSeparator()
+        self.commandBar.addAction(Action(FIF.PIN, '标记模式',  triggered=self._on_partition_toggled, checkable=True))
         self.color_combo = ColorComboBox(color=self.color)
         self.color_combo.setToolTip('曲线颜色选择')
         self.color_combo.colorChanged.connect(self.set_color)
-        header.addWidget(self.color_combo)
-        # 清空断点
+        self.commandBar.addWidget(self.color_combo)
         self.btn_clear = ToolButton(get_icon("删除"))
         self.btn_clear.setToolTip('清空标记点')
         self.btn_clear.clicked.connect(self._clear_all_lines)
-        header.addWidget(self.btn_clear)
-        # 添加快速时间范围选择
-        header.addStretch()
+        self.commandBar.addWidget(self.btn_clear)
+        self.commandBar.addSeparator()
+
         self.range_combo = QComboBox()
         self.range_combo.addItems(
             ["自定义", "最近1小时", "最近12小时", "最近24小时", "最近7天"]
@@ -1332,8 +1331,8 @@ class TrendAnalysisDialog(QDialog):
             elif 604000 <= time_diff <= 605000:  # 近似7天
                 self.range_combo.setCurrentIndex(4)
         self.range_combo.currentIndexChanged.connect(self._quick_time_range)
-        header.addWidget(QLabel("快速选择:"))
-        header.addWidget(self.range_combo)
+        self.commandBar.addWidget(QLabel("快速选择:"))
+        self.commandBar.addWidget(self.range_combo)
         wrapper_layout.addLayout(header)
         # 添加到布局
         self.trend_plot_layout.addWidget(chart_wrapper)
@@ -1362,6 +1361,11 @@ class TrendAnalysisDialog(QDialog):
         self.trend_plot.plot_multiple(self.data_cache)
         self._update_plot_mode(self._current_plot_mode)
         self._restore_cut_lines()
+
+    def onCheckedChanged(self, isChecked: bool):
+        button_text = "独立y轴" if isChecked else "共享y轴"
+        self.switchButton.setText(button_text)
+        self.trend_plot.set_independent_y(isChecked)
 
     def set_color(self, color):
         """设置曲线颜色"""
