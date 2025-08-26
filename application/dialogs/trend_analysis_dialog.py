@@ -387,15 +387,20 @@ class TrendAnalysisDialog(QDialog):
         self.commandBar_row3.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         row3.addWidget(self.commandBar_row3, 0)
         # 图表类型选择
-        self.commandBar_row3.addWidget(QLabel("图表类型:"))
         self.cmb_plot_type = ComboBox()
-        self.cmb_plot_type.addItems(["曲线图 📈", "频数直方图 📊", "相关系数矩阵 🔢"])
-        self.cmb_plot_type.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.cmb_plot_type.addItems(["趋势曲线", "频数直方", "相关系数"])
         self.cmb_plot_type.currentIndexChanged.connect(self._on_plot_type_changed)
         self.commandBar_row3.addWidget(self.cmb_plot_type)
         self.commandBar_row3.addSeparator()
+        self.range_combo = ComboBox()
+        self.range_combo.addItems(
+            ["自定义", "最近1小时", "最近12小时", "最近24小时", "最近7天"]
+        )
+
+        self.commandBar_row3.addWidget(QLabel("快速选择:"))
+        self.commandBar_row3.addWidget(self.range_combo)
+        self.commandBar_row3.addSeparator()
         # 时间选择
-        self.commandBar_row3.addWidget(QLabel("开始:"))
         current_datetime = QDateTime.currentDateTime()
         start_datetime = current_datetime.addSecs(-12 * 3600)
         self.start_dt = FastCalendarPicker(self)
@@ -410,16 +415,14 @@ class TrendAnalysisDialog(QDialog):
         self.end_time_edit.setTime(current_datetime.time())
         self.commandBar_row3.addWidget(self.start_dt)
         self.commandBar_row3.addWidget(self.start_time_edit)
-        end_label = QLabel("结束:")
-        self.commandBar_row3.addWidget(end_label)
+        self.commandBar_row3.addWidget(QLabel("~"))
         self.commandBar_row3.addWidget(self.end_dt)
         self.commandBar_row3.addWidget(self.end_time_edit)
         # 采样选择
         sample_label = QLabel("采样:")
         self.commandBar_row3.addWidget(sample_label)
         self.cmb_sample = ComboBox()
-        self.cmb_sample.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.cmb_sample.addItems(["600", "2000", "5000"])
+        self.cmb_sample.addItems([" 600", "2000", "5000"])
         self.commandBar_row3.addWidget(self.cmb_sample)
         # 应用按钮
         self.btn_apply = QPushButton()
@@ -430,6 +433,22 @@ class TrendAnalysisDialog(QDialog):
         self.btn_apply.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.btn_apply.clicked.connect(self._update_trends)
         self.commandBar_row3.addWidget(self.btn_apply)
+
+        # 检查当前时间与设置的时间的关系，以确定当前选择
+        now = datetime.datetime.now()
+        start, end = self._get_start_end_time()
+        time_diff = (now - start).total_seconds()
+        # 根据时间差来设置下拉列表当前选项
+        if abs((now - end).total_seconds()) < 300:  # 结束时间接近当前时间（5分钟内）
+            if 3500 <= time_diff <= 3700:  # 近似1小时
+                self.range_combo.setCurrentIndex(1)
+            elif 43000 <= time_diff <= 44000:  # 近似12小时
+                self.range_combo.setCurrentIndex(2)
+            elif 86000 <= time_diff <= 87000:  # 近似24小时
+                self.range_combo.setCurrentIndex(3)
+            elif 604000 <= time_diff <= 605000:  # 近似7天
+                self.range_combo.setCurrentIndex(4)
+
         control_layout.addLayout(row3)
         right_layout.addWidget(control_frame)
         # 图表区域
@@ -512,6 +531,7 @@ class TrendAnalysisDialog(QDialog):
         placeholder_layout.addWidget(placeholder_subtext)
         self.trend_plot_layout.addWidget(self.plot_placeholder)
         right_layout.addWidget(chart_frame, 1)  # 图表区域占据主要空间
+        self.range_combo.currentIndexChanged.connect(self._quick_time_range)
         # 主布局组装
         # 将左右两侧添加到分割器
         self.splitter.addWidget(left)
@@ -1126,7 +1146,7 @@ class TrendAnalysisDialog(QDialog):
         elif self.current_plot_type == 2:
             self.correlation_layout.addWidget(loading_frame)
         # 获取数据参数
-        sample = self.cmb_sample.currentText()
+        sample = self.cmb_sample.currentText().replace(" ", "")
         # 创建并启动数据获取工作线程
         w = Worker(
             self.parent.config.get_tools_by_type("trenddb-fetcher")[0],
@@ -1276,8 +1296,6 @@ class TrendAnalysisDialog(QDialog):
         self.commandBar = CommandBar(self)
         self.commandBar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         header.addWidget(self.commandBar, 0)
-        self.commandBar.addWidget(QLabel("趋势曲线图"))
-        self.commandBar.addSeparator()
         # 增加时间标记功能
         # 划分开关按钮
         self.switchButton = TransparentTogglePushButton('共享y轴', self)
@@ -1293,46 +1311,6 @@ class TrendAnalysisDialog(QDialog):
         self.btn_clear.setToolTip('清空标记点')
         self.btn_clear.clicked.connect(self._clear_all_lines)
         self.commandBar.addWidget(self.btn_clear)
-        self.commandBar.addSeparator()
-
-        self.range_combo = QComboBox()
-        self.range_combo.addItems(
-            ["自定义", "最近1小时", "最近12小时", "最近24小时", "最近7天"]
-        )
-        self.range_combo.setStyleSheet(
-            """
-            QComboBox {
-                border: 1px solid #ced4da;
-                border-radius: 3px;
-                padding: 2px 5px;
-                min-width: 100px;
-                font-size: 11px;
-                background-color: white;
-                color: black; /* 默认字体颜色 */
-            }
-            QComboBox:hover {
-                border-color: #40a9ff;
-                color: black; /* 鼠标悬浮时字体颜色 */
-            }
-        """
-        )
-        # 检查当前时间与设置的时间的关系，以确定当前选择
-        now = datetime.datetime.now()
-        start, end = self._get_start_end_time()
-        time_diff = (now - start).total_seconds()
-        # 根据时间差来设置下拉列表当前选项
-        if abs((now - end).total_seconds()) < 300:  # 结束时间接近当前时间（5分钟内）
-            if 3500 <= time_diff <= 3700:  # 近似1小时
-                self.range_combo.setCurrentIndex(1)
-            elif 43000 <= time_diff <= 44000:  # 近似12小时
-                self.range_combo.setCurrentIndex(2)
-            elif 86000 <= time_diff <= 87000:  # 近似24小时
-                self.range_combo.setCurrentIndex(3)
-            elif 604000 <= time_diff <= 605000:  # 近似7天
-                self.range_combo.setCurrentIndex(4)
-        self.range_combo.currentIndexChanged.connect(self._quick_time_range)
-        self.commandBar.addWidget(QLabel("快速选择:"))
-        self.commandBar.addWidget(self.range_combo)
         wrapper_layout.addLayout(header)
         # 添加到布局
         self.trend_plot_layout.addWidget(chart_wrapper)
@@ -1351,6 +1329,7 @@ class TrendAnalysisDialog(QDialog):
         status_layout.addWidget(point_count)
         status_layout.addStretch()
         # 显示时间范围
+        start, end = self._get_start_end_time()
         time_range = QLabel(
             f"时间范围: {start.strftime('%Y-%m-%d %H:%M')} 至 {end.strftime('%Y-%m-%d %H:%M')}"
         )
