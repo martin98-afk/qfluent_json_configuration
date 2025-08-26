@@ -77,7 +77,10 @@ class ServiceConfigManager(QDialog):
         """)
 
     def get_service_list(self):
-        worker = Worker(self.parent.config.api_tools.get("service_list"))
+        worker = Worker(
+            [self.parent.config.api_tools.get("service_list"), self.parent.config.api_tools.get("get_service_path")],
+            return_type="List"
+        )
         worker.signals.finished.connect(self.load_config)
         self.thread_pool.start(worker)
 
@@ -115,11 +118,12 @@ class ServiceConfigManager(QDialog):
     def load_config(self, service_list):
         self.left_list.clear()
         self.right_list.clear()
-        self.service_map = {name: url for name, url, _ in service_list}
+        services = service_list[0]
+        urls = service_list[1]
+        self.service_map = {name: url for name, url, _ in services}
         try:
-            urls = self.parent.config.api_tools.get("get_service_path").call(service_list)
-            configured = [name for name, url, _ in service_list if url in urls]
-            available = [name for name, url, _ in service_list if url not in urls]
+            configured = [name for name, url, _ in services if url in urls]
+            available = [name for name, url, _ in services if url not in urls]
             self.left_list.addItems(available)
             self.right_list.addItems(configured)
         except Exception as e:

@@ -23,7 +23,10 @@ class Worker(QRunnable):
             self.signals.error.emit("输入函数为空！")
 
         self.args = args
+        self.policy = kwargs.pop("policy", "extend")
+        self.return_type = kwargs.pop("return_type", "Dict")
         self.kwargs = kwargs
+
         try:
             if isinstance(fn, list):
                 self.fn = [ft.call for ft in fn]
@@ -38,19 +41,21 @@ class Worker(QRunnable):
     def run(self):
         try:
             if isinstance(self.fn, list):
-                result = defaultdict(list)
-                for fetcher in self.fn:
-                    if fetcher is None:
-                        continue
-                    r = fetcher(*self.args, **self.kwargs)
-                    policy = self.kwargs.get("policy", "extend")
-                    if r and policy == "extend":
-                        for t, pts in r.items():
-                            result[t].extend(pts)
-                    elif r and policy == "update":
-                        for t, pts in r.items():
-                            result[t] = pts
-                    self.signals.progress.emit(r)
+                if self.return_type == "Dict":
+                    result = defaultdict(list)
+                    for fetcher in self.fn:
+                        if fetcher is None:
+                            continue
+                        r = fetcher(*self.args, **self.kwargs)
+                        if r and self.policy == "extend":
+                            for t, pts in r.items():
+                                result[t].extend(pts)
+                        elif r and self.policy == "update":
+                            for t, pts in r.items():
+                                result[t] = pts
+                        self.signals.progress.emit(r)
+                elif self.return_type == "List":
+                    result = [fetcher(*self.args, **self.kwargs) for fetcher in self.fn]
             else:
                 result = self.fn(*self.args, **self.kwargs)
             self.signals.finished.emit(result)

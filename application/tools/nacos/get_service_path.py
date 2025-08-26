@@ -29,7 +29,7 @@ class GetNacosServicePath(BaseTool):
                              "group": group,
                              "namespace": namespace}
 
-    def call(self, service_list: list):
+    def call(self):
         """
         param:
         service_list: 服务列表：【服务名称，服务url】
