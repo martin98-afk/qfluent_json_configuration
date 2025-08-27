@@ -67,7 +67,7 @@ class IntervalPartitionDialog(QDialog):
         ctrl.addWidget(QLabel('采样数:'))
         self.cmb_sample = ComboBox(self)
         for v in (600, 2000, 5000):
-            self.cmb_sample.addItem(str(v), v)
+            self.cmb_sample.addItem(str(v), userData=v)
         self.cmb_sample.setCurrentIndex(1)
         ctrl.addWidget(self.cmb_sample)
 

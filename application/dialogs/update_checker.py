@@ -167,7 +167,7 @@ del /f /q "{main_exe}"
             f.write(script)
 
         subprocess.Popen([script_path], shell=True)
-        QMessageBox.information(self, "更新成功", "已成功更新，当前工具将稍后关闭！")
+        self.create_successbar("更新成功", "已成功更新，当前工具将稍后关闭！")
         subprocess.Popen([file_path])  # 自动启动新程序
         sys.exit()
 
@@ -189,3 +189,14 @@ del /f /q "{main_exe}"
     def _show_error(self, title, message):
         """显示错误提示"""
         QMessageBox.critical(None, title, message)
+
+    def create_successbar(self, title: str, content: str = "", duration: int = 5000):
+        InfoBar.success(
+            title=title,
+            content=content,
+            orient=Qt.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.BOTTOM,
+            duration=duration,  # won't disappear automatically
+            parent=self
+        )

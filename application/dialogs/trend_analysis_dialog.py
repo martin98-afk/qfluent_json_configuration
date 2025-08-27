@@ -315,23 +315,21 @@ class TrendAnalysisDialog(QDialog):
         selected_layout = QVBoxLayout(selected_frame)
         selected_layout.setContentsMargins(8, 8, 8, 8)
         selected_layout.setSpacing(5)
+
         parameter_type = QHBoxLayout()
+        self.commandBar_row1 = CommandBar(self)
+        self.commandBar_row1.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        parameter_type.addWidget(self.commandBar_row1, 0)
         param_label = QLabel("当前参数类型：")
-        parameter_type.addWidget(param_label)
+        self.commandBar_row1.addWidget(param_label)
         self.param_type_combo = ComboBox()
         self.param_types = self.parent.config.get_params_name()
         self.param_type_combo.addItems(self.param_types)
         if len(self.param_types) > 0:
             self.param_type_combo.setCurrentText(self.param_types[0])
         self.param_type_combo.currentIndexChanged.connect(self._load_points)
-        parameter_type.addWidget(self.param_type_combo)
-        self.load_points_btn = QPushButton()
-        self.load_points_btn.setIcon(get_icon("save"))
-        self.load_points_btn.setToolTip("初始化新加入测点")
-        self.load_points_btn.setStyleSheet(get_button_style_sheet())
-        self.load_points_btn.clicked.connect(self.add_tags)
-        parameter_type.addWidget(self.load_points_btn)
-        parameter_type.addStretch()
+        self.commandBar_row1.addWidget(self.param_type_combo)
+        self.commandBar_row1.addAction(Action(get_icon("save"), "初始化新加入测点", triggered=self.add_tags))
         # 简化标题与提示
         selected_header = QHBoxLayout()
         selected_title = QLabel("已选测点列表 (双击移除)")
@@ -388,13 +386,13 @@ class TrendAnalysisDialog(QDialog):
         row3.addWidget(self.commandBar_row3, 0)
         # 图表类型选择
         self.cmb_plot_type = ComboBox()
-        self.cmb_plot_type.addItems(["趋势曲线", "频数直方", "相关系数"])
+        self.cmb_plot_type.addItems(["📈 趋势曲线", "📊 频数直方", "🔢 相关系数"])
         self.cmb_plot_type.currentIndexChanged.connect(self._on_plot_type_changed)
         self.commandBar_row3.addWidget(self.cmb_plot_type)
         self.commandBar_row3.addSeparator()
         self.range_combo = ComboBox()
         self.range_combo.addItems(
-            ["自定义", "最近1小时", "最近12小时", "最近24小时", "最近7天"]
+            ["自定义", "最近1小时", "最近12小时", "最近24小时", "最近3天", "最近7天"]
         )
 
         self.commandBar_row3.addWidget(QLabel("快速选择:"))
@@ -446,8 +444,10 @@ class TrendAnalysisDialog(QDialog):
                 self.range_combo.setCurrentIndex(2)
             elif 86000 <= time_diff <= 87000:  # 近似24小时
                 self.range_combo.setCurrentIndex(3)
-            elif 604000 <= time_diff <= 605000:  # 近似7天
+            elif 172000 <= time_diff <= 180000:  # 近似3天
                 self.range_combo.setCurrentIndex(4)
+            elif 604000 <= time_diff <= 605000:  # 近似7天
+                self.range_combo.setCurrentIndex(5)
 
         control_layout.addLayout(row3)
         right_layout.addWidget(control_frame)
@@ -1263,7 +1263,6 @@ class TrendAnalysisDialog(QDialog):
 
     def _show_trend_plot(self):
         """显示曲线图"""
-        self._current_plot_mode = 0  # 默认为标准线图
         # 清除旧的趋势图控件，但保留trend_plot和data_stats_frame
         for i in reversed(range(self.trend_plot_layout.count())):
             item = self.trend_plot_layout.itemAt(i)
@@ -1338,7 +1337,6 @@ class TrendAnalysisDialog(QDialog):
         self.trend_plot_layout.addWidget(info_bar)
         # 绘制数据
         self.trend_plot.plot_multiple(self.data_cache)
-        self._update_plot_mode(self._current_plot_mode)
         self._restore_cut_lines()
 
     def onCheckedChanged(self, isChecked: bool):
@@ -1366,26 +1364,14 @@ class TrendAnalysisDialog(QDialog):
         elif index == 3:  # 最近24小时
             self.start_dt.setDate(now.addSecs(-3600 * 24).date())
             self.start_time_edit.setTime(now.addSecs(-3600 * 24).time())
-        elif index == 4:  # 最近7天
+        elif index == 4:  # 最近3天
+            self.start_dt.setDate(now.addDays(-3).date())
+            self.start_time_edit.setTime(now.addDays(-3).time())
+        elif index == 5:  # 最近7天
             self.start_dt.setDate(now.addDays(-7).date())
             self.start_time_edit.setTime(now.addDays(-7).time())
         # 自动应用新的时间范围
         self._update_trends()
-
-    def _update_plot_mode(self, index):
-        """更新曲线图的显示模式"""
-        self._current_plot_mode = index
-        # 如果有数据和图表，更新显示
-        if hasattr(self, "data_cache") and self.data_cache and self.trend_plot:
-            # 临时保存当前显示范围
-            view_range = self.trend_plot.getViewBox().viewRange()
-            # 移除旧曲线
-            for curve in self.trend_plot.curves:
-                self.trend_plot.removeItem(curve)
-            self.trend_plot.curves.clear()
-            # 重新添加曲线，使用新的样式
-            modes = {0: "line", 1: "fill", 2: "scatter"}
-            self.trend_plot.plot_multiple(self.data_cache, mode=modes[index])
 
     def _clear_plot_area(self):
         # 清除所有图表区域的控件

@@ -22,6 +22,7 @@ def run_app():
     seed_everything()
     os.environ["OMP_NUM_THREADS"] = "3"
     enable_dpi_scale()
+
     app = QApplication(sys.argv)
     app.setAttribute(Qt.AA_DontCreateNativeWidgetSiblings)
     QApplication.setDoubleClickInterval(600)  # 全局设置为 300 毫秒
