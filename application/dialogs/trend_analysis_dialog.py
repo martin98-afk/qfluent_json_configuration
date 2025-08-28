@@ -26,7 +26,8 @@ from PyQt5.QtWidgets import (
     QStyle,
 )
 from loguru import logger
-from qfluentwidgets import FluentIcon as FIF, ComboBox, SwitchButton, CommandBar, Action, TransparentTogglePushButton
+from qfluentwidgets import FluentIcon as FIF, ComboBox, SwitchButton, CommandBar, Action, TransparentTogglePushButton, \
+    TimePicker
 from qfluentwidgets import SearchLineEdit, InfoBar, InfoBarPosition, Dialog, FastCalendarPicker, CompactTimeEdit, \
     ToolButton, TogglePushButton
 
@@ -379,77 +380,85 @@ class TrendAnalysisDialog(QDialog):
         control_layout.setContentsMargins(8, 6, 8, 6)
         control_layout.setSpacing(6)
 
-        # 控制行
+        # 控制行 1: 图表类型 + 快速选择 + 展开/折叠按钮
         row3 = QHBoxLayout()
         self.commandBar_row3 = CommandBar(self)
         self.commandBar_row3.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         row3.addWidget(self.commandBar_row3, 0)
+
         # 图表类型选择
         self.cmb_plot_type = ComboBox()
         self.cmb_plot_type.addItems(["📈 趋势曲线", "📊 频数直方", "🔢 相关系数"])
         self.cmb_plot_type.currentIndexChanged.connect(self._on_plot_type_changed)
         self.commandBar_row3.addWidget(self.cmb_plot_type)
         self.commandBar_row3.addSeparator()
-        self.range_combo = ComboBox()
-        self.range_combo.addItems(
-            ["自定义", "最近1小时", "最近12小时", "最近24小时", "最近3天", "最近7天"]
-        )
 
+        # 快速选择
+        self.range_combo = ComboBox()
+        self.range_combo.addItems(["自定义", "最近1小时", "最近12小时", "最近24小时", "最近3天", "最近7天"])
         self.commandBar_row3.addWidget(QLabel("快速选择:"))
         self.commandBar_row3.addWidget(self.range_combo)
         self.commandBar_row3.addSeparator()
-        # 时间选择
+
+        # 添加一个可切换的按钮来展开/折叠时间选择面板
+        self.btn_toggle_time_panel = Action(
+            icon=get_icon("时间"), text="时间范围", triggered=self._toggle_time_panel, checkable=True)
+        self.commandBar_row3.addAction(self.btn_toggle_time_panel)
+
+        # 应用按钮
+        self.btn_apply = Action(get_icon("change"), "刷新", triggered=self._update_trends)
+        self.commandBar_row3.addAction(self.btn_apply)
+
+        # 创建可折叠的时间选择面板
+        self.time_panel = QFrame()
+        self.time_panel.setObjectName("timePanel")
+        self.time_panel.setStyleSheet("""
+                   #timePanel {
+                       background-color: #e9ecef;
+                       border: 1px solid #dee2e6;
+                       border-radius: 6px;
+                       margin: 4px 0px;
+                       padding: 8px;
+                   }
+               """)
+        time_panel_layout = QHBoxLayout(self.time_panel)  # 使用水平布局
+        time_panel_layout.setContentsMargins(4, 4, 4, 4)
+        time_panel_layout.setSpacing(10)
+
+        # 将时间选择控件放入面板
         current_datetime = QDateTime.currentDateTime()
         start_datetime = current_datetime.addSecs(-12 * 3600)
+
         self.start_dt = FastCalendarPicker(self)
         self.start_dt.setDate(start_datetime.date())
-        self.start_time_edit = CompactTimeEdit(self)
-        self.start_time_edit.setTimeRange(QTime(0, 0), QTime(23, 59))
+        self.start_time_edit = TimePicker(self)
         self.start_time_edit.setTime(start_datetime.time())
+
         self.end_dt = FastCalendarPicker(self)
         self.end_dt.setDate(current_datetime.date())
-        self.end_time_edit = CompactTimeEdit(self)
-        self.end_time_edit.setTimeRange(QTime(0, 0), QTime(23, 59))
+        self.end_time_edit = TimePicker(self)
         self.end_time_edit.setTime(current_datetime.time())
-        self.commandBar_row3.addWidget(self.start_dt)
-        self.commandBar_row3.addWidget(self.start_time_edit)
-        self.commandBar_row3.addWidget(QLabel("~"))
-        self.commandBar_row3.addWidget(self.end_dt)
-        self.commandBar_row3.addWidget(self.end_time_edit)
+
         # 采样选择
         sample_label = QLabel("采样:")
-        self.commandBar_row3.addWidget(sample_label)
         self.cmb_sample = ComboBox()
         self.cmb_sample.addItems([" 600", "2000", "5000"])
-        self.commandBar_row3.addWidget(self.cmb_sample)
-        # 应用按钮
-        self.btn_apply = QPushButton()
-        self.btn_apply.setIcon(get_icon("change"))
-        self.btn_apply.setToolTip("使用当前设置更新图表")
-        self.btn_apply.setCursor(Qt.PointingHandCursor)
-        self.btn_apply.setStyleSheet(get_button_style_sheet())
-        self.btn_apply.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.btn_apply.clicked.connect(self._update_trends)
-        self.commandBar_row3.addWidget(self.btn_apply)
 
-        # 检查当前时间与设置的时间的关系，以确定当前选择
-        now = datetime.datetime.now()
-        start, end = self._get_start_end_time()
-        time_diff = (now - start).total_seconds()
-        # 根据时间差来设置下拉列表当前选项
-        if abs((now - end).total_seconds()) < 300:  # 结束时间接近当前时间（5分钟内）
-            if 3500 <= time_diff <= 3700:  # 近似1小时
-                self.range_combo.setCurrentIndex(1)
-            elif 43000 <= time_diff <= 44000:  # 近似12小时
-                self.range_combo.setCurrentIndex(2)
-            elif 86000 <= time_diff <= 87000:  # 近似24小时
-                self.range_combo.setCurrentIndex(3)
-            elif 172000 <= time_diff <= 180000:  # 近似3天
-                self.range_combo.setCurrentIndex(4)
-            elif 604000 <= time_diff <= 605000:  # 近似7天
-                self.range_combo.setCurrentIndex(5)
+        # 将控件添加到面板布局
+        time_panel_layout.addWidget(self.start_dt)
+        time_panel_layout.addWidget(self.start_time_edit)
+        time_panel_layout.addWidget(QLabel("~"))
+        time_panel_layout.addWidget(self.end_dt)
+        time_panel_layout.addWidget(self.end_time_edit)
+        time_panel_layout.addWidget(sample_label)
+        time_panel_layout.addWidget(self.cmb_sample)
+        time_panel_layout.addStretch()
+        # 默认隐藏时间面板
+        self.time_panel.setVisible(False)
 
+        # 将时间面板添加到控制布局
         control_layout.addLayout(row3)
+        control_layout.addWidget(self.time_panel)  # 将面板添加到主控制布局
         right_layout.addWidget(control_frame)
         # 图表区域
         chart_frame = QFrame()
@@ -548,6 +557,13 @@ class TrendAnalysisDialog(QDialog):
         self.timer.setSingleShot(True)
         self.timer.timeout.connect(self._adjust_layout)
 
+    def _toggle_time_panel(self, checked: bool):
+        """
+        切换时间选择面板的显示/隐藏状态。
+        :param checked: 按钮的选中状态，True表示展开，False表示折叠。
+        """
+        self.time_panel.setVisible(checked)
+
     # === 优化点3: 新增统一的搜索入口和模式切换方法 ===
     def _on_search_mode_changed(self):
         """搜索模式切换时，清空搜索框并刷新为完整本地数据"""
@@ -631,8 +647,16 @@ class TrendAnalysisDialog(QDialog):
     def _get_start_end_time(self):
         start_date = self.start_dt.getDate().toPyDate()
         end_date = self.end_dt.getDate().toPyDate()
-        start_time = self.start_time_edit.dateTime().toPyDateTime()
-        end_time = self.end_time_edit.dateTime().toPyDateTime()
+        start_time = self.start_time_edit.getTime()
+        start_time = datetime.time(
+            start_time.hour(),
+            start_time.minute()
+        )
+        end_time = self.end_time_edit.getTime()
+        end_time = datetime.time(
+            end_time.hour(),
+            end_time.minute()
+        )
         start_time = QTime(start_time.hour, start_time.minute, start_time.second).toPyTime()
         end_time = QTime(end_time.hour, end_time.minute, end_time.second).toPyTime()
         return datetime.datetime.combine(start_date, start_time), datetime.datetime.combine(end_date, end_time)

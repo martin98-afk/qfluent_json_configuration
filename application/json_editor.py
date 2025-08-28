@@ -1449,48 +1449,75 @@ class JSONEditor(QWidget):
         return tags
 
     def dropEvent(self, event):
-        for url in event.mimeData().urls():
+        urls = event.mimeData().urls()
+        if not urls:
+            return
+
+        # 存储待添加的文件信息：(filename, path, config)
+        files_to_add = []
+
+        # 用于记录重名但需要重命名的文件
+        processed_filenames = set()
+
+        for url in urls:
             path = url.toLocalFile()
-            if path.split(".")[-1] not in ["json", "yaml", "yml", "ini"]:
+            ext = path.split(".")[-1].lower()
+            if ext not in ["json", "yaml", "yml", "ini"]:
                 continue
 
             filename = get_file_name(path)
 
+            # 检查是否已存在
             if filename in self.open_files:
+                # 弹窗提示是否覆盖（只弹一次）
                 box = MessageBox("文件已存在", f"文件“{filename}”已经打开，是否覆盖当前配置？", self)
                 box.yesButton.setText("覆盖")
-                box.cancelButton.setText("保留")
+                box.cancelButton.setText("保留并重命名")
 
                 if box.exec():
+                    # 覆盖：移除旧的，后续会重新加载
                     config = load_config(path)
-                    self.open_files[filename] = config
-                    self.orig_files[filename] = path
-                    if self.current_file == filename:
-                        self.tree.clear()
-                        self.load_tree(config)
-                    else:
-                        self.tab_bar.setCurrentTab(filename)
-                        self.switch_to_file(filename)
-                    return
+                    files_to_add.append((filename, path, config, ext))
                 else:
-                    # 自动重命名
-                    base, ext = os.path.splitext(filename)
+                    # 保留原文件，当前拖入的文件自动重命名
+                    base, ext_with_dot = os.path.splitext(filename)
                     i = 1
-                    new_filename = f"{base}_{i}{ext}"
-                    while new_filename in self.open_files:
+                    new_filename = f"{base}_{i}{ext_with_dot}"
+                    while new_filename in self.open_files or new_filename in processed_filenames:
                         i += 1
-                        new_filename = f"{base}_{i}{ext}"
+                        new_filename = f"{base}_{i}{ext_with_dot}"
                     filename = new_filename
+                    config = load_config(path)
+                    files_to_add.append((filename, path, config, ext))
+            else:
+                # 不存在，直接加载
+                try:
+                    config = load_config(path)
+                    files_to_add.append((filename, path, config, ext))
+                except Exception as e:
+                    # 可选：提示加载失败
+                    self.create_errorbar("加载失败", f"无法加载文件：{filename}\n错误：{str(e)}")
+                    continue
 
-            # 没有重复或选择保留 -> 正常添加
-            config = load_config(path)
+            processed_filenames.add(filename)
+
+        # === 统一处理所有文件 ===
+        for filename, path, config, ext in files_to_add:
+            # 更新数据
             self.open_files[filename] = config
             self.orig_files[filename] = path
-            self.file_format[filename] = path.split(".")[-1]
-            self.update_file_format(None, None, self.file_format[filename])
-            self.add_tab(filename)
-            self.tab_bar.setCurrentIndex(self.tab_bar.count() - 1)
-            self.switch_to_file(filename)
+            self.file_format[filename] = ext
+
+            # 添加 tab（避免重复添加）
+            if filename not in self.tab_bar.itemMap.keys():
+                self.add_tab(filename)
+
+        # 切换到最后一个添加的文件（可选）
+        if files_to_add:
+            last_filename = files_to_add[-1][0]
+            self.update_file_format(None, None, files_to_add[-1][3])  # 假设 update 需要格式
+            self.tab_bar.setCurrentTab(last_filename)
+            self.switch_to_file(last_filename)
 
     def show_rename_message_box(self):
         rename_message_box = CustomMessageBox("重命名配置", "输入新配置名称", self.current_file, self)
