@@ -78,8 +78,8 @@ class JSONServiceTester(QMainWindow):
         # 修改日志刷新频率
         self.log_timer = QTimer(self)
         self.log_timer.timeout.connect(self.update_service_logs)
-        self.log_timer.start(1000)  # 默认1000毫秒刷新一次
-        self.log_refresh_interval = 1000  # 默认刷新间隔
+        self.log_timer.start(5000)  # 默认5000毫秒刷新一次
+        self.log_refresh_interval = 5000  # 默认刷新间隔
 
     def set_current_text(self, text):
         self.json_input.setPlainText(text)
@@ -265,7 +265,7 @@ class JSONServiceTester(QMainWindow):
 
         self.log_refresh_combo = ComboBox()
         self.log_refresh_combo.addItems(["500ms", "1000ms", "2000ms", "5000ms"])
-        self.log_refresh_combo.setCurrentIndex(1)  # 默认1000ms
+        self.log_refresh_combo.setCurrentIndex(3)  # 默认1000ms
         self.log_refresh_combo.setMinimumWidth(80)
         self.log_refresh_combo.currentIndexChanged.connect(self.update_log_refresh_interval)
         log_toolbar.addWidget(self.log_refresh_combo)

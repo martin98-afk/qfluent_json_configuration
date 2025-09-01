@@ -134,51 +134,6 @@ class FluentJSONEditor(FluentWindow):
         w, h = desktop.width(), desktop.height()
         self.move(w // 2 - self.width() // 2, h // 2 - self.height() // 2)
 
-    def show_history_menu(self):
-        if not os.path.exists(HISTORY_PATH):
-            return
-
-        with open(HISTORY_PATH, 'r', encoding='utf-8') as f:
-            history = json.load(f)
-
-        file_map = {}
-        for record in history:
-            file, timestamp, config = record
-            if file not in file_map:
-                file_map[file] = []
-            file_map[file].append((timestamp, config))
-
-        filenames = list(file_map.keys())
-
-        for versions in file_map.values():
-            versions.sort(key=lambda x: datetime.strptime(x[0], "%Y-%m-%d %H:%M:%S"), reverse=True)
-
-        # 新的加载对话框
-        load_history_dialog = LoadHistoryDialog(file_map, filenames, self)
-
-        if load_history_dialog.exec_() == QDialog.Accepted:
-            selected_file = load_history_dialog.selected_file
-            selected_version = load_history_dialog.selected_version
-            selected_config = load_history_dialog.selected_config
-
-            current_config = self.get_current_config()
-
-            if load_history_dialog.action == "load":
-                # 新增逻辑：作为新配置打开
-                history_filename = f"[历史]{os.path.basename(selected_file)}-{selected_version}"
-                history_filename = self.tab_bar.add_tab(history_filename)
-                self.open_files[history_filename] = selected_config
-                self.switch_to_file(history_filename)
-
-            elif load_history_dialog.action == "compare":
-                # 对比功能保持不变
-                compare_dialog = VersionDiffDialog(
-                    selected_config, current_config,
-                    lambda config: self.reload_tree(config),
-                    selected_file, selected_version
-                )
-                compare_dialog.exec_()
-
     def show_about_dialog(self):
         QMessageBox.about(self, "关于",
                           f"配置编辑器 v{self.updater.current_version}\n"

@@ -1,5 +1,4 @@
 import copy
-import json
 import os
 import re
 from datetime import datetime
@@ -25,7 +24,7 @@ from PyQt5.QtWidgets import (
     QWidgetAction, QListWidget, QListWidgetItem, QFrame
 )
 from PyQt5.QtWidgets import (
-    QFileDialog, QInputDialog, QShortcut, QAbstractItemView
+    QFileDialog, QShortcut, QAbstractItemView
 )
 from deepdiff import DeepDiff
 from qfluentwidgets import FluentIcon as FIF, CommandBar, TabBar, SearchLineEdit, MessageBox, InfoBar, InfoBarPosition, \
@@ -1728,21 +1727,24 @@ class JSONEditor(QWidget):
 
     def add_param(self):
         item = self.tree.currentItem()
-        name, ok = QInputDialog.getText(self, "参数名称", "请输入参数名称:")
-        if ok and name:
-            value, ok = QInputDialog.getText(self, "参数值", "请输入参数值:")
-            if ok:
-                # 保存当前状态用于撤销
-                old_state = self.capture_tree_data()
+        param_name_messagebox = CustomMessageBox("新参数名称", "请输入新参数名称", parent=self)
+        if param_name_messagebox.exec():
+            name = param_name_messagebox.get_text()
+            param_val_messagebox = CustomMessageBox("新参数值", "请输入新参数值", parent=self)
+            value = ""
+            if param_val_messagebox.exec():
+                value = param_val_messagebox.get_text()
+            # 保存当前状态用于撤销
+            old_state = self.capture_tree_data()
 
-                new_item = ConfigurableTreeWidgetItem(name, value)
-                if item:
-                    item.addChild(new_item)
-                else:
-                    self.tree.addTopLevelItem(new_item)
+            new_item = ConfigurableTreeWidgetItem(name, value)
+            if item:
+                item.addChild(new_item)
+            else:
+                self.tree.addTopLevelItem(new_item)
 
-                # 记录撤销操作
-                self.undo_stack.push(TreeEditCommand(self, old_state, f"添加参数 {name}"))
+            # 记录撤销操作
+            self.undo_stack.push(TreeEditCommand(self, old_state, f"添加参数 {name}"))
 
     def add_sub_param(self, item=None, tag_name=None):
         """添加预制子参数"""
@@ -1847,7 +1849,7 @@ class JSONEditor(QWidget):
             selected_version = load_history_dialog.selected_version
             selected_config = load_history_dialog.selected_config
 
-            current_config = self.get_current_config()
+            current_config = self.tree_to_dict()
 
             if load_history_dialog.action == "load":
                 # 新增逻辑：作为新配置打开

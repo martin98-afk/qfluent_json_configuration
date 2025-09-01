@@ -227,8 +227,6 @@ class VersionDiffDialog(QDialog):
                     has_difference = True  # 类型不同（本节点是字典，对方不是）
                 else:
                     has_difference = value != other_value
-                    print(value)
-                    print(other_value)
             else:
                 if isinstance(other_value, dict):
                     has_difference = True  # 类型不同（本节点不是字典，对方是）
