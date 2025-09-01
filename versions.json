@@ -1,5 +1,16 @@
 [
   {
+    "version": "1.3.3",
+    "publishDate": "2025-08-26 17:30",
+    "forceUpdate": true,
+    "publishNotes": [
+      "feat(service-test-dialog): 增加日志刷新频率设置并优化信息提示",
+      "- 在日志工具栏添加刷新频率下拉框，支持500ms、1000ms、2000ms、5000ms四种刷新间隔",
+      "- 默认刷新间隔调整为1000ms",
+      "- 优化信息提示，引入InfoBar组件替代QMessageBox，提供更灵活的提示位置和样式",
+      "- 调整趋势分析对话框中的时间范围选择标签和按钮文本"
+    ]
+  },{
     "version": "1.3.2",
     "publishDate": "2025-08-26 17:30",
     "forceUpdate": true,

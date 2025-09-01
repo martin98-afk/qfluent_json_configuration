@@ -17,11 +17,10 @@ from PyQt5.QtWidgets import (
     QTextEdit,
     QLabel,
     QSplitter,
-    QMessageBox,
     QShortcut,
 )
 from loguru import logger
-from qfluentwidgets import ComboBox, PushButton, SearchLineEdit
+from qfluentwidgets import ComboBox, PushButton, SearchLineEdit, InfoBar, InfoBarPosition, CaptionLabel
 
 from application.tools.api_service.servicves_test import ServicesTest
 from application.utils.threading_utils import Worker
@@ -79,7 +78,8 @@ class JSONServiceTester(QMainWindow):
         # 修改日志刷新频率
         self.log_timer = QTimer(self)
         self.log_timer.timeout.connect(self.update_service_logs)
-        self.log_timer.start(300)  # 将刷新频率从1000毫秒改为2000毫秒
+        self.log_timer.start(1000)  # 默认1000毫秒刷新一次
+        self.log_refresh_interval = 1000  # 默认刷新间隔
 
     def set_current_text(self, text):
         self.json_input.setPlainText(text)
@@ -251,12 +251,25 @@ class JSONServiceTester(QMainWindow):
         log_toolbar.addStretch()
 
         # 自动刷新切换按钮
-        self.toggle_log_btn = QPushButton()
+        self.toggle_log_btn = PushButton()
         self.toggle_log_btn.setFont(QFont("微软雅黑", 12))
         self.toggle_log_btn.setMinimumHeight(32)
         self.toggle_log_btn.setToolTip("开启/停止自动刷新日志")
         self.toggle_log_btn.setText("🛑 停止刷新")
         self.toggle_log_btn.setStyleSheet(get_button_style_sheet())
+
+        # ===== 新增：日志刷新频率下拉框 =====
+        refresh_label = CaptionLabel("刷新频率:")
+        refresh_label.setFont(QFont("微软雅黑", 10))
+        log_toolbar.addWidget(refresh_label)
+
+        self.log_refresh_combo = ComboBox()
+        self.log_refresh_combo.addItems(["500ms", "1000ms", "2000ms", "5000ms"])
+        self.log_refresh_combo.setCurrentIndex(1)  # 默认1000ms
+        self.log_refresh_combo.setMinimumWidth(80)
+        self.log_refresh_combo.currentIndexChanged.connect(self.update_log_refresh_interval)
+        log_toolbar.addWidget(self.log_refresh_combo)
+        # ===== 新增结束 =====
 
         log_toolbar.addWidget(self.toggle_log_btn)
 
@@ -312,7 +325,7 @@ class JSONServiceTester(QMainWindow):
                 min-width: 20px;
             }
             QTextEdit QScrollBar::handle:horizontal:hover {
-                background: #888888;
+                background: #888880;
             }
             QTextEdit QScrollBar::add-line:horizontal,
             QTextEdit QScrollBar::sub-line:horizontal {
@@ -367,8 +380,62 @@ class JSONServiceTester(QMainWindow):
         QShortcut(QKeySequence("Shift+F3"), self, lambda: self.navigate_search(-1))
         QShortcut(QKeySequence("Ctrl+L"), self, lambda: self.toggle_log_refresh())
 
+    # ===== 新增：更新日志刷新频率 =====
+    def update_log_refresh_interval(self, index):
+        intervals = [500, 1000, 2000, 5000]
+        if 0 <= index < len(intervals):
+            new_interval = intervals[index]
+            self.log_timer.setInterval(new_interval)
+            self.log_refresh_interval = new_interval
+            self.create_infobar(f"日志刷新频率已设置为 {new_interval}ms", "设置成功")
+
+    # ===== 新增：统一使用InfoBar =====
+    def create_successbar(self, title: str, content: str = "", duration: int = 5000):
+        InfoBar.success(
+            title=title,
+            content=content,
+            orient=Qt.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.BOTTOM,
+            duration=duration,
+            parent=self
+        )
+
+    def create_errorbar(self, title: str, content: str = "", duration: int = 5000):
+        InfoBar.error(
+            title=title,
+            content=content,
+            orient=Qt.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.BOTTOM,
+            duration=duration,
+            parent=self
+        )
+
+    def create_warningbar(self, title: str, content: str = "", duration: int = 5000):
+        InfoBar.warning(
+            title=title,
+            content=content,
+            orient=Qt.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.BOTTOM,
+            duration=duration,
+            parent=self
+        )
+
+    def create_infobar(self, title: str, content: str = "", duration: int = 5000):
+        InfoBar.info(
+            title=title,
+            content=content,
+            orient=Qt.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.BOTTOM,
+            duration=duration,
+            parent=self
+        )
+
     # 新增 on_search_changed
-    def on_search_changed(self, text: str=""):
+    def on_search_changed(self, text: str = ""):
         self.apply_filter(text)
 
     def on_reonline_clicked(self):
@@ -389,17 +456,20 @@ class JSONServiceTester(QMainWindow):
                 self.current_service_id = self.service_combo.itemData(0)[0]
                 self.service_combo.setCurrentIndex(0)
         except Exception as e:
-            QMessageBox.critical(self, "错误", f"加载服务失败：{str(e)}")
+            # ===== 替换QMessageBox为InfoBar =====
+            self.create_errorbar("错误", f"加载服务失败：{str(e)}")
 
     def on_service_changed(self):
         if self.service_combo.count() > 0:
             self.current_service_id = self.service_combo.currentData()[0]
+            self.create_successbar(f"已选择服务: {self.service_combo.currentText()}")
 
     def send_request(self):
         """发送服务请求并处理响应"""
         # 检查服务是否已选择
         if self.service_combo.count() == 0:
-            QMessageBox.warning(self, "警告", "没有可用的服务，请先加载服务列表")
+            # ===== 替换QMessageBox为InfoBar =====
+            self.create_warningbar("警告", "没有可用的服务，请先加载服务列表")
             return
 
         # 获取服务路径
@@ -409,15 +479,15 @@ class JSONServiceTester(QMainWindow):
         # 解析JSON请求数据
         raw_json = self.json_input.toPlainText()
         if not raw_json.strip():
-            QMessageBox.warning(self, "警告", "请求数据不能为空")
+            # ===== 替换QMessageBox为InfoBar =====
+            self.create_warningbar("警告", "请求数据不能为空")
             return
 
         try:
             request_data = json.loads(raw_json)
         except json.JSONDecodeError as e:
-            QMessageBox.warning(
-                self, "JSON格式错误", f"请检查JSON格式是否正确:\n{str(e)}"
-            )
+            # ===== 替换QMessageBox为InfoBar =====
+            self.create_warningbar("JSON格式错误", f"请检查JSON格式是否正确:\n{str(e)}")
             return
 
         # 更新UI状态
@@ -767,8 +837,8 @@ class JSONServiceTester(QMainWindow):
             )
             self.statusBar().showMessage("JSON格式化成功", 3000)
         except json.JSONDecodeError:
-            QMessageBox.warning(self, "警告", "无效的JSON格式")
-            self.statusBar().showMessage("JSON格式无效，无法格式化", 3000)
+            # ===== 替换QMessageBox为InfoBar =====
+            self.create_warningbar("警告", "无效的JSON格式")
 
     def get_stylesheet(self):
         return """
@@ -819,3 +889,7 @@ class JSONServiceTester(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    # 测试代码
+    window = JSONServiceTester("{}")
+    window.show()
+    sys.exit(app.exec_())

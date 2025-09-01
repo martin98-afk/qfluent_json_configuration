@@ -396,13 +396,14 @@ class TrendAnalysisDialog(QDialog):
         # 快速选择
         self.range_combo = ComboBox()
         self.range_combo.addItems(["自定义", "最近1小时", "最近12小时", "最近24小时", "最近3天", "最近7天"])
-        self.commandBar_row3.addWidget(QLabel("快速选择:"))
+        self.range_combo.setCurrentIndex(2)
+        self.commandBar_row3.addWidget(QLabel("时间范围选择:"))
         self.commandBar_row3.addWidget(self.range_combo)
         self.commandBar_row3.addSeparator()
 
         # 添加一个可切换的按钮来展开/折叠时间选择面板
         self.btn_toggle_time_panel = Action(
-            icon=get_icon("时间"), text="时间范围", triggered=self._toggle_time_panel, checkable=True)
+            icon=get_icon("时间"), text="自定义时间范围", triggered=self._toggle_time_panel, checkable=True)
         self.commandBar_row3.addAction(self.btn_toggle_time_panel)
 
         # 应用按钮
