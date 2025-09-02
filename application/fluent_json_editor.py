@@ -21,6 +21,7 @@ from application.dialogs.config_setting_dialog import ConfigSettingDialog
 from application.dialogs.load_history_dialog import LoadHistoryDialog
 from application.dialogs.logger_dialog import QTextEditLogger
 from application.dialogs.nacos_service_manage import ServiceConfigManager
+from application.dialogs.service_status_monitor import ServiceStatusMonitor
 from application.dialogs.service_test_dialog import JSONServiceTester
 from application.dialogs.trend_analysis_dialog import TrendAnalysisDialog
 from application.dialogs.update_checker import UpdateChecker
@@ -65,18 +66,25 @@ class FluentJSONEditor(FluentWindow):
 
 
     def _init_menu(self):
+        """界面初始化"""
+        # 趋势分析
         self.trend_analysis_dialog = TrendAnalysisDialog(
             parent=self.editor,
             home=self
         )
+        # 下控配置
         self.service_config_manager = ServiceConfigManager(
             parent=self.editor
         )
+        # 服务测试
         self.service_test = JSONServiceTester("", self.editor, self)
+        # 服务状态监控
+        self.service_monitor = ServiceStatusMonitor(editor=self.editor, parent=self)
+        # 配置设置
         self.config_setting = ConfigSettingDialog(self.editor)
 
-    @error_catcher_decorator
     def _initNavigation(self):
+        """页面加载到主页面中"""
         self.navigationInterface.setExpandWidth(200)
         # 上半部分按钮
         self.addSubInterface(self.editor, FIF.HOME, '配置界面')
@@ -96,6 +104,8 @@ class FluentJSONEditor(FluentWindow):
         self.updater = UpdateChecker(self.editor, self)
         self.updater.check_update()
         self.window_title = f"{self.editor.config.title} - V{self.updater.current_version}"
+        service_moniter = self.addSubInterface(self.service_monitor, get_icon("状态监控"), '服务监控')
+        service_moniter.clicked.connect(self.service_monitor.load_services)
         # 下半部分按钮
         log_interface = self.addSubInterface(
             self.log_viewer, get_icon("系统运行日志"), '执行日志', NavigationItemPosition.BOTTOM)

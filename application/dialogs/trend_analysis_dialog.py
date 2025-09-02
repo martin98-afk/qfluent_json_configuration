@@ -3,33 +3,30 @@ import datetime
 
 import matplotlib
 import numpy as np
-from PyQt5.QtCore import Qt, QThreadPool, QTimer, QRect, QTime, QDateTime
+from PyQt5.QtCore import Qt, QThreadPool, QTimer, QTime, QDateTime
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (
     QDialog,
     QVBoxLayout,
-    QFrame, QSizePolicy
+    QFrame
 )
 from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
-    QPushButton,
     QTableWidget,
     QTableWidgetItem,
     QHeaderView,
     QMessageBox,
     QAbstractItemView,
     QSplitter,
-    QComboBox,
     QWidget,
     QApplication,
     QStyle,
 )
 from loguru import logger
-from qfluentwidgets import FluentIcon as FIF, ComboBox, SwitchButton, CommandBar, Action, TransparentTogglePushButton, \
+from qfluentwidgets import FluentIcon as FIF, ComboBox, CommandBar, Action, TransparentTogglePushButton, \
     TimePicker
-from qfluentwidgets import SearchLineEdit, InfoBar, InfoBarPosition, Dialog, FastCalendarPicker, CompactTimeEdit, \
-    ToolButton, TogglePushButton
+from qfluentwidgets import SearchLineEdit, InfoBar, InfoBarPosition, Dialog, FastCalendarPicker, ToolButton
 
 from application.utils.threading_utils import Worker
 from application.widgets.color_picker import ColorComboBox
@@ -50,7 +47,7 @@ except:
     pass  # 如果字体设置失败，使用默认字体
 from application.utils.utils import (
     get_icon,
-    get_button_style_sheet, load_point_cache, save_point_cache
+    load_point_cache, save_point_cache
 )
 from application.widgets.trend_plot_widget import TrendPlotWidget
 from application.widgets.correlation_matrix_widget import CorrelationMatrixWidget

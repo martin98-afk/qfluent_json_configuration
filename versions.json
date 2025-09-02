@@ -1,5 +1,16 @@
 [
   {
+    "version": "1.3.5",
+    "publishDate": "2025-09-02 16:33",
+    "forceUpdate": true,
+    "publishNotes": [
+      "feat(application): 添加服务状态监控功能",
+      "- 新增 ServiceStatusMonitor 类实现服务状态监控界面",
+      "- 实现服务列表加载、服务状态检查、监控记录显示等功能",
+      "- 添加自动重启、手动重启、监控间隔设置等操作",
+      "- 优化界面样式，增加状态说明、记录保留数量等设置"
+    ]
+  },{
     "version": "1.3.3",
     "publishDate": "2025-08-26 17:30",
     "forceUpdate": true,
