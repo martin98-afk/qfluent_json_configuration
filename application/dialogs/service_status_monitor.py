@@ -371,9 +371,6 @@ class ServiceStatusMonitor(QWidget):
         self.monitoring_table.setSpan(0, 0, 1, 8)  # 8列
         self.monitoring_table.item(0, 0).setTextAlignment(Qt.AlignCenter)
 
-        # 显示错误信息
-        self.create_errorbar("服务列表加载失败", str(error))
-
         # 标记加载结束
         self.loading_services = False
 

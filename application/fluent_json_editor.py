@@ -97,15 +97,16 @@ class FluentJSONEditor(FluentWindow):
                 self.trend_analysis_dialog._load_points()
             )
         )
-        service_interface = self.addSubInterface(self.service_test, get_icon("服务接口配置"), '服务测试')
-        service_interface.clicked.connect(self.service_test.load_services)
         nacos_interface = self.addSubInterface(self.service_config_manager, get_icon("nacos"), 'Nacos下控服务配置')
         nacos_interface.clicked.connect(self.service_config_manager.get_service_list)
+        service_interface = self.addSubInterface(self.service_test, get_icon("服务接口配置"), '服务测试')
+        service_interface.clicked.connect(self.service_test.load_services)
+        service_moniter = self.addSubInterface(self.service_monitor, get_icon("状态监控"), '服务监控')
+        service_moniter.clicked.connect(self.service_monitor.load_services)
         self.updater = UpdateChecker(self.editor, self)
         self.updater.check_update()
         self.window_title = f"{self.editor.config.title} - V{self.updater.current_version}"
-        service_moniter = self.addSubInterface(self.service_monitor, get_icon("状态监控"), '服务监控')
-        service_moniter.clicked.connect(self.service_monitor.load_services)
+
         # 下半部分按钮
         log_interface = self.addSubInterface(
             self.log_viewer, get_icon("系统运行日志"), '执行日志', NavigationItemPosition.BOTTOM)

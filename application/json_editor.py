@@ -691,7 +691,7 @@ class JSONEditor(QWidget):
             tree_no="0",
         )
         work.signals.finished.connect(lambda result: self.update_config(result))
-        work.signals.finished.connect(self.create_errorbar)
+        work.signals.error.connect(self.create_errorbar)
         self.thread_pool.start(work)
 
     def update_config(self, file_upload_result):
@@ -2219,6 +2219,10 @@ class JSONEditor(QWidget):
 
     def create_errorbar(self, title: str, content: str = "", duration: int = 5000, show_button: bool = False,
                         button_fn=None):
+        if not isinstance(title, str):
+            title = str(title)
+        if not isinstance(content, str):
+            content = str(content)
         bar = InfoBar.error(
             title=title,
             content=content,
