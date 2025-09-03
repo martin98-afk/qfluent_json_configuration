@@ -440,7 +440,8 @@ class ServiceStatusMonitor(QWidget):
         self.monitoring_table.setItem(row, 0, name_item)
 
         # 状态监控开关
-        monitor_switch = SwitchButton()
+        monitor_switch = SwitchButton("")
+        monitor_switch._onText = self.tr('')
         monitor_switch.setProperty("service_id", sid)
         monitor_switch.checkedChanged.connect(self.on_monitoring_switch_changed)
         monitor_switch.setChecked(prev_state['monitoring'])
@@ -468,7 +469,8 @@ class ServiceStatusMonitor(QWidget):
         self.monitoring_table.setCellWidget(row, 3, interval_combo)
 
         # 自动重启开关
-        restart_switch = SwitchButton()
+        restart_switch = SwitchButton("")
+        restart_switch._onText = self.tr('')
         restart_switch.setProperty("service_id", sid)
         restart_switch.checkedChanged.connect(self.on_auto_restart_switch_changed)
         restart_switch.setChecked(prev_state['auto_restart'])

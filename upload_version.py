@@ -1,22 +1,34 @@
 import requests
 
 # 配置参数
-owner = "dingmama123141"
+owner = "mading12315"
 repo = "JsonConfiguration"
-token = "577df5e6829a600271587e1af4793fb7"
+token = "J9r98fXvxywspbdivTje2yQM"
 
 # 创建 Release
-def create_release():
-    url = f"https://gitee.com/api/v5/repos/{owner}/{repo}/releases"
-    headers = {"Authorization": f"token {token}"}
+def create_release(tag_name, name, body):
+    url = f"https://api.gitcode.com/api/v5/repos/{owner}/{repo}/releases"
+    headers = {"Authorization": token}
     data = {
-        "tag_name": "v1.0.1",
-        "name": "Release v1.0.1",
-        "body": "新增功能说明...",
-        "target_commitish": "main"
+        "tag_name": tag_name,
+        "name": name,
+        "body": body,
+        "target_commitish": "master"
     }
     response = requests.post(url, headers=headers, json=data)
     print(response.json())
+
+def get_upload_url(tag_name):
+    url = f"https://api.gitcode.com/api/v5/repos/mading12315/JsonConfiguration/releases/0.1.1/upload_url"
+    headers = {
+        "Authorization": token,
+        'Accept': 'application/json'
+    }
+    payload = {
+        "file_name": "main.exe"
+    }
+    response = requests.get(url, headers=headers, data=payload)
+    return response.json()
 
 # 获取最新 Release 下载链接
 def get_latest_download_url():
@@ -35,7 +47,13 @@ def download_file(download_url):
             f.write(chunk)
 
 # 示例流程
-create_release()
+import json
+with open("versions.json", "r", encoding="utf-8") as f:
+    data = json.load(f)
+latest_release = sorted(data, key=lambda x: x["version"], reverse=True)[0]
+create_release("0.1.1", "参数配置工具", "\n".join(latest_release["publishNotes"]))
+url = get_upload_url("0.1.1")
+print(url)
 download_url = get_latest_download_url()
 if download_url:
     download_file(download_url)

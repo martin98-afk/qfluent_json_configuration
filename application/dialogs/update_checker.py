@@ -5,7 +5,7 @@ import sys
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QMessageBox, QProgressDialog, QWidget
 from loguru import logger
-from qfluentwidgets import Dialog, InfoBar, InfoBarPosition, InfoBarIcon
+from qfluentwidgets import Dialog, InfoBar, InfoBarPosition, InfoBarIcon, MessageBox
 
 from application.utils.threading_utils import DownloadThread, AsyncUpdateChecker
 from application.utils.utils import resource_path, get_button_style_sheet, get_icon
