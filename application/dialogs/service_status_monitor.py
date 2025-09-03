@@ -10,7 +10,8 @@ from PyQt5.QtWidgets import (
     QTableWidgetItem,
     QHeaderView,
     QLabel,
-    QHBoxLayout
+    QHBoxLayout,
+    QSizePolicy
 )
 from loguru import logger
 from qfluentwidgets import FluentIcon as FIF, ComboBox, TogglePushButton
@@ -30,7 +31,7 @@ class ServiceStatusMonitor(QWidget):
     """独立的服务状态监控界面"""
 
     STATUS_COLORS = {
-        '成功': '#9cdcfe',
+        '成功': '#32CD32',
         '失败': '#f44747',
         '未监控': '#808080',
         '检查中...': '#ffcb6b',
@@ -39,6 +40,7 @@ class ServiceStatusMonitor(QWidget):
 
     def __init__(self, editor, parent=None):
         super().__init__(parent)
+        self.home = parent
         self.setObjectName("服务监控")
         self.editor = editor
         self.service_tester = ServicesTest()
@@ -51,6 +53,7 @@ class ServiceStatusMonitor(QWidget):
         self.last_selected_service_id = None  # 保存上次选中的服务ID
         self.loading_services = False  # 标记是否正在加载服务
         self.record_limit = 1000  # 默认记录保留数量
+        self.log_panel_visible = False  # 标记日志面板是否可见
 
         # 初始化UI
         self.init_ui()
@@ -91,6 +94,12 @@ class ServiceStatusMonitor(QWidget):
         self.refresh_btn.clicked.connect(self.load_services)
         control_layout.addWidget(self.refresh_btn)
 
+        # 添加监控日志切换按钮
+        self.log_toggle_btn = TogglePushButton("监控日志", self)
+        self.log_toggle_btn.setCheckable(True)
+        self.log_toggle_btn.setChecked(False)
+        self.log_toggle_btn.clicked.connect(self.toggle_log_panel)
+        control_layout.addWidget(self.log_toggle_btn)
         control_layout.addStretch()
 
         # 状态说明
@@ -98,7 +107,7 @@ class ServiceStatusMonitor(QWidget):
         status_layout.addWidget(QLabel("状态说明:"))
 
         status_items = [
-            ("成功", "#9cdcfe"),
+            ("成功", "#32CD32"),
             ("失败", "#f44747"),
             ("未监控", "#808080"),
             ("检查中...", "#ffcb6b"),
@@ -160,8 +169,12 @@ class ServiceStatusMonitor(QWidget):
             }
         """)
 
-        # 监控记录表格
-        record_layout = QVBoxLayout()
+        # 创建监控日志容器
+        self.log_container = QWidget()
+        self.log_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        log_container_layout = QVBoxLayout(self.log_container)
+        log_container_layout.setContentsMargins(0, 0, 0, 0)
+        log_container_layout.setSpacing(5)
 
         # 记录标题和按钮
         record_title_layout = QHBoxLayout()
@@ -186,7 +199,7 @@ class ServiceStatusMonitor(QWidget):
         record_title_layout.addLayout(record_limit_layout)
         record_title_layout.addStretch()
 
-        record_layout.addLayout(record_title_layout)
+        log_container_layout.addLayout(record_title_layout)
 
         self.record_table = TableWidget()
         self.record_table.setColumnCount(4)
@@ -224,20 +237,43 @@ class ServiceStatusMonitor(QWidget):
             }
         """)
 
-        record_layout.addWidget(self.record_table)
+        log_container_layout.addWidget(self.record_table)
+
+        # 默认隐藏日志容器
+        self.log_container.setVisible(False)
+        self.log_container.setMinimumHeight(0)
+        self.log_container.setMaximumHeight(0)
 
         # 添加到主布局
         main_layout.addLayout(title_layout)
         main_layout.addLayout(control_layout)
         main_layout.addLayout(status_layout)
         main_layout.addWidget(self.monitoring_table)
-        main_layout.addLayout(record_layout)
+        main_layout.addWidget(self.log_container)  # 添加日志容器
+
+    def toggle_log_panel(self, checked):
+        """切换监控日志面板的显示状态"""
+        self.log_panel_visible = checked
+        self.log_toggle_btn.setChecked(checked)
+
+        if checked:
+            # 展开日志面板
+            self.log_container.setMinimumHeight(0)
+            self.log_container.setMaximumHeight(16777215)  # Qt默认的最大高度
+            self.log_container.setVisible(True)
+        else:
+            # 折叠日志面板
+            self.log_container.setMinimumHeight(0)
+            self.log_container.setMaximumHeight(0)
+            self.log_container.setVisible(False)
+
+        # 更新记录表格
+        self.update_record_table()
 
     def on_record_limit_changed(self, index):
         """记录保留数量变化处理"""
         limits = [1000, 2000, 5000]
         self.record_limit = limits[index]
-        self.create_infobar("记录设置", f"监控记录最多保留 {self.record_limit} 条")
 
         # 限制现有记录数量
         if len(self.monitoring_records) > self.record_limit:
@@ -284,7 +320,11 @@ class ServiceStatusMonitor(QWidget):
                 'monitoring': info['monitoring'],
                 'interval': info.get('interval', 10),  # 保存监控间隔
                 'auto_restart': info['auto_restart'],
-                'max_restart': info.get('max_restart', 3)  # 保存最大重启次数
+                'max_restart': info.get('max_restart', 3),  # 保存最大重启次数
+                'status': info.get('status', '未监控'),  # 保存状态
+                'last_check': info.get('last_check', 0),  # 保存最后检查时间
+                'restart_count': info.get('restart_count', 0),  # 保存重启计数
+                'last_restart': info.get('last_restart', 0)  # 保存最后重启时间
             }
 
         # 清空表格但保留状态数据
@@ -310,7 +350,11 @@ class ServiceStatusMonitor(QWidget):
                 'monitoring': False,  # 默认不监控
                 'interval': 10,  # 默认10秒
                 'auto_restart': False,
-                'max_restart': 3  # 默认最大重启次数为3
+                'max_restart': 3,  # 默认最大重启次数为3
+                'status': '未监控',  # 默认状态
+                'last_check': 0,
+                'restart_count': 0,
+                'last_restart': 0
             })
 
             if prev_state['monitoring']:
@@ -358,7 +402,6 @@ class ServiceStatusMonitor(QWidget):
                 record_btn.setChecked(True)
                 service_name = record_btn.property("service_name")
                 self.current_service_filter = service_name
-                self.create_infobar(f"监控记录", f"恢复查看 {service_name} 的监控记录")
                 self.update_record_table()
                 break
 
@@ -381,7 +424,11 @@ class ServiceStatusMonitor(QWidget):
                 'monitoring': False,  # 默认不监控
                 'interval': 10,  # 默认10秒
                 'auto_restart': False,
-                'max_restart': 3  # 默认最大重启次数为3
+                'max_restart': 3,  # 默认最大重启次数为3
+                'status': '未监控',  # 默认状态
+                'last_check': 0,
+                'restart_count': 0,
+                'last_restart': 0
             }
 
         row = self.monitoring_table.rowCount()
@@ -399,10 +446,11 @@ class ServiceStatusMonitor(QWidget):
         monitor_switch.setChecked(prev_state['monitoring'])
         self.monitoring_table.setCellWidget(row, 1, monitor_switch)
 
-        # 服务状态
-        status_label = QLabel("未监控" if not prev_state['monitoring'] else "检查中...")
+        # 服务状态 - 使用之前保存的状态，而不是总是"检查中..."
+        status_text = prev_state['status']
+        status_label = QLabel(status_text)
         status_label.setAlignment(Qt.AlignCenter)
-        color = self.STATUS_COLORS['未监控'] if not prev_state['monitoring'] else self.STATUS_COLORS['检查中...']
+        color = self.STATUS_COLORS.get(status_text, self.STATUS_COLORS['未监控'])
         status_label.setStyleSheet(f"color: {color};")
         self.monitoring_table.setCellWidget(row, 2, status_label)
 
@@ -448,7 +496,7 @@ class ServiceStatusMonitor(QWidget):
         record_btn.clicked.connect(self.on_view_record)
         self.monitoring_table.setCellWidget(row, 7, record_btn)
 
-        # 初始化监控状态
+        # 初始化监控状态 - 使用之前的状态
         self.monitoring_services[sid] = {
             'service_name': name,
             'service_path': path,
@@ -456,11 +504,11 @@ class ServiceStatusMonitor(QWidget):
             'interval': prev_state['interval'],
             'auto_restart': prev_state['auto_restart'],
             'max_restart': prev_state['max_restart'],
-            'status': '未监控' if not prev_state['monitoring'] else '检查中...',
-            'last_check': 0,
+            'status': status_text,  # 使用之前的状态
+            'last_check': prev_state['last_check'],
             'status_label': status_label,
-            'restart_count': 0,
-            'last_restart': 0,
+            'restart_count': prev_state['restart_count'],
+            'last_restart': prev_state['last_restart'],
             'record_btn': record_btn  # 保存按钮引用
         }
 
@@ -474,10 +522,6 @@ class ServiceStatusMonitor(QWidget):
             text = combo.currentText()
             interval = int(text.replace("秒", ""))
             self.monitoring_services[sid]['interval'] = interval
-
-            # 显示配置信息
-            service_name = self.monitoring_services[sid]['service_name']
-            self.create_infobar(f"服务 {service_name}", f"监控间隔设置为 {interval} 秒")
 
             # 重新计算定时器间隔
             self.update_monitoring_timer_interval()
@@ -499,9 +543,8 @@ class ServiceStatusMonitor(QWidget):
         new_interval = min_interval * 1000
         if self.monitoring_timer.interval() != new_interval:
             self.monitoring_timer.setInterval(new_interval)
-            if not self.monitoring_timer.isActive():
-                self.monitoring_timer.start()
-            self.create_infobar("监控设置", f"全局监控间隔更新为 {min_interval} 秒")
+        if not self.monitoring_timer.isActive():
+            self.monitoring_timer.start()
 
     def on_view_record(self, checked):
         """查看服务监控记录"""
@@ -556,6 +599,10 @@ class ServiceStatusMonitor(QWidget):
 
     def update_record_table(self):
         """更新记录表格，根据当前过滤器"""
+        # 如果日志面板不可见，直接返回
+        if not self.log_panel_visible:
+            return
+
         self.record_table.setRowCount(0)  # 先清空
 
         # 筛选记录
@@ -629,7 +676,6 @@ class ServiceStatusMonitor(QWidget):
             return
 
         info = self.monitoring_services[sid]
-        self.create_infobar(f"正在重启服务 {info['service_name']}", "")
 
         # 记录监控记录
         self.add_monitoring_record(
@@ -720,9 +766,11 @@ class ServiceStatusMonitor(QWidget):
         if 'status_label' in info and info['status_label']:
             try:
                 if checked:
-                    info['status_label'].setText("检查中...")
-                    info['status_label'].setStyleSheet(f"color: {self.STATUS_COLORS['检查中...']};")
+                    # 不要立即设置为"检查中..."，而是保留之前的状态
+                    # 只有在开始检查时才更新为"检查中..."
+                    pass
                 else:
+                    info['status'] = "未监控"
                     info['status_label'].setText("未监控")
                     info['status_label'].setStyleSheet(f"color: {self.STATUS_COLORS['未监控']};")
             except RuntimeError:
@@ -762,11 +810,12 @@ class ServiceStatusMonitor(QWidget):
                     monitor_switch.setChecked(True)
                     break
 
-            # 更新状态显示
+            # 更新状态显示 - 不要立即设置为"检查中..."
+            # 只有在开始检查时才更新为"检查中..."
             if 'status_label' in info and info['status_label']:
                 try:
-                    info['status_label'].setText("检查中...")
-                    info['status_label'].setStyleSheet(f"color: {self.STATUS_COLORS['检查中...']};")
+                    # 保留之前的状态，不要立即改为"检查中..."
+                    pass
                 except RuntimeError:
                     pass
 
@@ -798,6 +847,7 @@ class ServiceStatusMonitor(QWidget):
             # 更新状态显示
             if 'status_label' in info and info['status_label']:
                 try:
+                    info['status'] = "未监控"
                     info['status_label'].setText("未监控")
                     info['status_label'].setStyleSheet(f"color: {self.STATUS_COLORS['未监控']};")
                 except RuntimeError:
@@ -834,6 +884,7 @@ class ServiceStatusMonitor(QWidget):
             # 更新状态为"检查中..."
             if 'status_label' in info and info['status_label']:
                 try:
+                    info['status'] = "检查中..."
                     info['status_label'].setText("检查中...")
                     info['status_label'].setStyleSheet(f"color: {self.STATUS_COLORS['检查中...']};")
                 except RuntimeError:
@@ -943,12 +994,12 @@ class ServiceStatusMonitor(QWidget):
         # 更新状态为"重启中..."
         if 'status_label' in info and info['status_label']:
             try:
+                info['status'] = "重启中..."
                 info['status_label'].setText("重启中...")
                 info['status_label'].setStyleSheet(f"color: {self.STATUS_COLORS['重启中...']};")
             except RuntimeError:
                 pass
 
-        self.create_infobar(f"服务 {info['service_name']} 状态异常", "正在自动重启...")
         worker = Worker(self.editor.config.api_tools.get("service_reonline"), sid)
         worker.signals.finished.connect(lambda: self.on_restart_finished(sid))
         worker.signals.error.connect(lambda e: self.on_restart_error(sid, e))
@@ -970,6 +1021,7 @@ class ServiceStatusMonitor(QWidget):
             # 重启后状态暂时设为检查中
             if 'status_label' in info and info['status_label']:
                 try:
+                    info['status'] = "检查中..."
                     info['status_label'].setText("检查中...")
                     info['status_label'].setStyleSheet(f"color: {self.STATUS_COLORS['检查中...']};")
                 except RuntimeError:
@@ -991,6 +1043,7 @@ class ServiceStatusMonitor(QWidget):
             # 重启失败后状态仍为失败
             if 'status_label' in info and info['status_label']:
                 try:
+                    info['status'] = "失败"
                     info['status_label'].setText("失败")
                     info['status_label'].setStyleSheet(f"color: {self.STATUS_COLORS['失败']};")
                 except RuntimeError:
@@ -1029,6 +1082,8 @@ class ServiceStatusMonitor(QWidget):
 
     # ===== 通知方法 =====
     def create_successbar(self, title: str, content: str = "", duration: int = 5000):
+        if self.home.stackedWidget.currentWidget().objectName() != self.objectName():
+            return
         InfoBar.success(
             title=title,
             content=content,
@@ -1040,6 +1095,8 @@ class ServiceStatusMonitor(QWidget):
         )
 
     def create_errorbar(self, title: str, content: str = "", duration=5000):
+        if self.home.stackedWidget.currentWidget().objectName() != self.objectName():
+            return
         InfoBar.error(
             title=title,
             content=content,
@@ -1051,6 +1108,8 @@ class ServiceStatusMonitor(QWidget):
         )
 
     def create_warningbar(self, title: str, content: str = "", duration=5000):
+        if self.home.stackedWidget.currentWidget().objectName() != self.objectName():
+            return
         InfoBar.warning(
             title=title,
             content=content,
@@ -1062,6 +1121,8 @@ class ServiceStatusMonitor(QWidget):
         )
 
     def create_infobar(self, title: str, content: str = "", duration=5000):
+        if self.home.stackedWidget.currentWidget().objectName() != self.objectName():
+            return
         InfoBar.info(
             title=title,
             content=content,

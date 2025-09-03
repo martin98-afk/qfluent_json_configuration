@@ -69,11 +69,6 @@ class ServicesTest:
         names = [item["paramName"] for item in data["outputParams"]]
         return {name: val for name, val in zip(names, data_list)}
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_fixed(1),
-        retry=retry_if_exception_type((httpx.RequestError, httpx.HTTPStatusError)),
-    )
     def _test_single(self, path, data) -> dict:
         if self._cancelled:
             raise Exception("Task cancelled")  # 主动抛异常，停止重试
