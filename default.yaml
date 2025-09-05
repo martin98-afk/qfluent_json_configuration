@@ -96,6 +96,13 @@ param-structure:
         - '-5'
         - '5'
         - '1'
+      偏移量2:
+        type: slider
+        default: '0'
+        options:
+        - '-5'
+        - '5'
+        - '1'
   目标参数:
     type: subgroup
     subchildren:

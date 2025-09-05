@@ -75,11 +75,9 @@ class VersionDiffDialog(QDialog):
         file_version_widget.setLayout(file_version_layout)
 
         file_label = QLabel("📁 文件：")
-        file_label.setStyleSheet("font-size: 18px; font-weight: bold;")
         self.history_file_combo = ComboBox()
         self.history_file_combo.setMaxVisibleItems(15)
         self.history_file_combo.setFixedWidth(250)  # 更宽一点
-        self.history_file_combo.setStyleSheet("font-size: 18px; padding: 2px 6px;")
         self.history_file_combo.addItems(self.file_map.keys())
         self.history_file_combo.setCurrentText(history_file_name)
         self.history_file_combo.currentIndexChanged.connect(
@@ -87,13 +85,9 @@ class VersionDiffDialog(QDialog):
         )
 
         version_label = QLabel("🕒 版本：")
-        version_label.setStyleSheet(
-            "font-size: 18px; font-weight: bold; margin-left: 8px;"
-        )
         self.version_time_combo = ComboBox()
         self.version_time_combo.setMaxVisibleItems(15)
-        self.version_time_combo.setFixedWidth(230)  # 缩小一些
-        self.version_time_combo.setStyleSheet("font-size: 18px; padding: 2px 6px;")
+        self.version_time_combo.setFixedWidth(250)  # 缩小一些
         self.version_time_combo.addItems(
             [item["save_time"] for item in self.file_map[history_file_name]]
         )

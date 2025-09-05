@@ -729,7 +729,7 @@ class JSONEditor(QWidget):
             param_no=self.config.get_model_binding_param_no(selected_path),
             param_val=file_url
         )
-
+        self.auto_save(version_prefix="关联")
         self.undo_stack.push(TreeEditCommand(self, old_state, f"更新文件地址为: {file_url}"))
         self.show_status_message(f"文件地址已同步到: {selected_path}", "success")
         self.create_successbar(f"配置上传成功！")
@@ -1366,18 +1366,12 @@ class JSONEditor(QWidget):
         full_path = self.get_path_by_item(item)
         # 创建上下文菜单
         menu = RoundMenu()
-        if item and self.config.params_type.get(self.get_path_by_item(item)) == "subgroup":
+        if item and self.config.params_type.get(full_path) == "subgroup" and not re.search(r' [参数]*[0-9]+', item.text(0)):
             menu.addActions(
                 [
-                    Action(FIF.FOLDER_ADD, "添加子参数", triggered=lambda: self.add_sub_param(None, None))
+                    Action(FIF.ADD, "添加子参数", triggered=lambda: self.add_sub_param(None, None))
                 ]
             )
-        # 创建一级菜单项
-        menu.addActions(
-            [
-                Action(FIF.ADD, "新增参数", triggered=self.add_param)
-            ]
-        )
         if item:
             # 删除操作
             menu.addAction(Action(FIF.DELETE, "删除参数", triggered=self.remove_param))
@@ -1388,14 +1382,15 @@ class JSONEditor(QWidget):
             menu.addAction(Action(FIF.PLAY, "运行至该组件", triggered=lambda: self.run_param(run_type="1")))
             menu.addAction(Action(get_icon("日志"), "查看组件日志", triggered=self.show_component_logs))
 
-        menu.addSeparator()
         # 视图操作作为一级菜单项
         if item and item.childCount() > 0:
+            menu.addSeparator()
             menu.addAction(Action(FIF.DOWN, "展开", triggered=lambda: item.setExpanded(True)))
             menu.addAction(Action(FIF.UP, "折叠", triggered=lambda: item.setExpanded(False)))
-        else:
-            menu.addAction(Action(FIF.DOWN, "展开全部", triggered=self.tree.expandAll))
-            menu.addAction(Action(FIF.UP, "折叠全部", triggered=self.tree.collapseAll))
+
+        menu.addSeparator()
+        menu.addAction(Action(FIF.DOWN, "展开全部", triggered=self.tree.expandAll))
+        menu.addAction(Action(FIF.UP, "折叠全部", triggered=self.tree.collapseAll))
 
         menu.addSeparator()
         menu.addAction(
@@ -1648,6 +1643,8 @@ class JSONEditor(QWidget):
             self.model_selector_btn.setText("<无关联模型>")
             self.model_selector_btn.setIcon(QIcon())
         # 如果有没有在初始化参数中出现的参数，则自动根据初始化参数添加
+        print(self.config.init_params)
+        print(data)
         data = self.config.init_params | data if not path_prefix else data
         # 正常加载参数配置
         for key, value in data.items():
@@ -1656,7 +1653,6 @@ class JSONEditor(QWidget):
             required = self.config.require_flag.get(full_path)
             if isinstance(value, list):
                 item = ConfigurableTreeWidgetItem(key, list2str(value), editor=self, required=required)
-
                 if parent:
                     parent.addChild(item)
                 else:
