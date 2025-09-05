@@ -51,8 +51,8 @@ import json
 with open("versions.json", "r", encoding="utf-8") as f:
     data = json.load(f)
 latest_release = sorted(data, key=lambda x: x["version"], reverse=True)[0]
-create_release("0.1.1", "参数配置工具", "\n".join(latest_release["publishNotes"]))
-url = get_upload_url("0.1.1")
+create_release(latest_release["version"], "参数配置工具", "\n".join(latest_release["publishNotes"]))
+url = get_upload_url(latest_release["version"])
 print(url)
 download_url = get_latest_download_url()
 if download_url:

@@ -95,7 +95,7 @@ class ServiceStatusMonitor(QWidget):
         control_layout.addWidget(self.refresh_btn)
 
         # 添加监控日志切换按钮
-        self.log_toggle_btn = TogglePushButton("监控日志", self)
+        self.log_toggle_btn = TogglePushButton(FIF.HISTORY ,"监控日志", self)
         self.log_toggle_btn.setCheckable(True)
         self.log_toggle_btn.setChecked(False)
         self.log_toggle_btn.clicked.connect(self.toggle_log_panel)

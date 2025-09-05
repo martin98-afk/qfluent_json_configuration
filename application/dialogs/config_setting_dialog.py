@@ -2,27 +2,25 @@ import os
 import sys
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont, QIcon, QKeySequence
+from PyQt5.QtGui import QFont, QKeySequence
 from PyQt5.QtWidgets import (
     QApplication,
     QDialog,
     QVBoxLayout,
-    QHBoxLayout,
-    QPushButton,
     QMessageBox,
     QTreeWidgetItem,
-    QLineEdit,
-    QStyledItemDelegate,
     QMenu,
     QInputDialog,
     QShortcut,
-    QFileDialog,
-    QButtonGroup,
+    QFileDialog, QLabel,
 )
-from qfluentwidgets import SegmentedWidget, setFont
+from loguru import logger
+from qfluentwidgets import FluentIcon as FIF
+from qfluentwidgets import SegmentedWidget, CommandBar, Action, ComboBox
 
 from application.utils.config_handler import yaml
-from application.utils.utils import get_icon, get_button_style_sheet
+from application.utils.utils import get_icon
+from application.widgets.custom_input_messagebox import CustomMessageBox
 from application.widgets.draggable_tree_widget import DraggableTreeWidget
 
 
@@ -44,31 +42,6 @@ class ConfigSettingDialog(QDialog):
                 border-radius: 8px;
             }}
         """)
-
-        self.clipboard_data = None
-        tool_layout = QHBoxLayout()
-        tool_layout.addStretch(1)
-        self.restore_btn = QPushButton("恢复默认")
-        self.restore_btn.setIcon(get_icon("初始化配置数据"))
-        self.restore_btn.setStyleSheet(get_button_style_sheet(bg_color="#99ccff"))
-        self.restore_btn.clicked.connect(self.restore_config)
-        tool_layout.addWidget(self.restore_btn)
-        self.import_btn = QPushButton("打开配置")
-        self.import_btn.setIcon(get_icon("打开文件"))
-        self.import_btn.setStyleSheet(get_button_style_sheet())
-        self.import_btn.clicked.connect(self.import_config)
-        tool_layout.addWidget(self.import_btn)
-        self.export_btn = QPushButton("导出配置")
-        self.export_btn.setIcon(get_icon("导出配置"))  # 需要准备一个导出图标
-        self.export_btn.setStyleSheet(get_button_style_sheet())
-        self.export_btn.clicked.connect(self.export_config)
-        tool_layout.addWidget(self.export_btn)
-        self.save_btn = QPushButton("保存并应用")
-        self.save_btn.setIcon(get_icon("save"))
-        self.save_btn.setStyleSheet(get_button_style_sheet(bg_color="#a8e6cf"))
-        self.save_btn.clicked.connect(self.save_config)
-        tool_layout.addWidget(self.save_btn)
-
         self.tree = DraggableTreeWidget()
         self.tree.setHeaderLabels(["字段", "值"])
         self.tree.setAlternatingRowColors(True)
@@ -78,19 +51,67 @@ class ConfigSettingDialog(QDialog):
         self.tree.customContextMenuRequested.connect(self.on_context_menu)
         self.tree.itemDoubleClicked.connect(self.toggle_expand_collapse)
         self.tree.setHeaders()
+        self.clipboard_data = None
 
+        # === 创建 CommandBar（顶部工具栏）===
+        self.commandBar = CommandBar(self)
+        self.commandBar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)  # 图标+文字
+        self.commandBar.setFixedHeight(40)  # 可选：固定高度
+
+        # ✅ 新增：配置文件切换 ComboBox
+        self.config_combo = ComboBox(self)
+        self.config_combo.setFixedWidth(200)
+        self.config_combo.setPlaceholderText("选择配置...")
+        # ✅ 使用 CommandBar.addWidget() 插入控件到 CommandBar 最前面
+        self.commandBar.addWidget(
+            QLabel("切换配置: "),
+        )
+        self.commandBar.addWidget(
+            self.config_combo,  # 控件
+        )
+        self.commandBar.addSeparator()
+        # 创建按钮 Action
+        self.restore_action = Action(get_icon("初始化配置数据"), '恢复默认', parent=self)
+        self.import_action = Action(get_icon("打开文件"), '打开配置', parent=self)
+        self.export_action = Action(FIF.SAVE_COPY, '导出配置', parent=self)
+        self.save_action = Action(FIF.SAVE, '保存并应用', parent=self)
+
+        # 设置图标（也可以保留 get_icon，但推荐使用 FIF）
+        # 如果你坚持用 get_icon，可以这样：
+        # self.restore_action.setIcon(get_icon("初始化配置数据"))
+
+        # 添加到 CommandBar
+        self.commandBar.addAction(self.restore_action)
+        self.commandBar.addAction(self.import_action)
+        self.commandBar.addAction(self.export_action)
+        self.commandBar.addAction(self.save_action)
+
+        # 连接信号
+        self.config_combo.currentTextChanged.connect(self.on_config_switched)
+        self.restore_action.triggered.connect(self.restore_config)
+        self.import_action.triggered.connect(self.import_config)
+        self.export_action.triggered.connect(self.export_config)
+        self.save_action.triggered.connect(self.save_config)
+
+        # 设置按钮样式（可选）
+        # 由于 CommandBar 默认样式已符合 Fluent 风格，无需手动设置 bg_color
+
+        # === 主布局 ===
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(16, 16, 16, 16)
         main_layout.setSpacing(12)
 
-        # Add layout for top buttons
+        # 添加顶部组件
+        main_layout.addWidget(self.commandBar)  # 新增：顶部命令栏
         self.pivot = SegmentedWidget(self)
-        main_layout.addWidget(self.pivot)  # Insert at the top
+        main_layout.addWidget(self.pivot)
         main_layout.addWidget(self.tree)
-        main_layout.addLayout(tool_layout)
 
+        # === 加载配置列表 ===
+        self.load_config_list()
         self.load_config()
 
+        # 快捷键保持不变
         QShortcut(QKeySequence("Ctrl+C"), self, self.copy_node)
         QShortcut(QKeySequence("Ctrl+V"), self, self.paste_node)
         QShortcut(QKeySequence("Delete"), self, self.delete_parameter)
@@ -216,9 +237,11 @@ class ConfigSettingDialog(QDialog):
         return None
 
     def restore_config(self):
+        self.config_combo.setCurrentText(0)
         self.parent.config.restore_default_params()
         self.parent.config.params_loaded.connect(self.on_config_loaded)
         self.parent.config.load_async()
+
 
     def on_config_loaded(self):
         with open(self.parent.config.param_definitions_path, 'r', encoding='utf-8') as f:
@@ -275,12 +298,14 @@ class ConfigSettingDialog(QDialog):
                 template.get("params", []), template.get("params_default", [""] * len(template.get("params", [])))
             )
         }
-        key, ok = QInputDialog.getText(self, "输入键名", f"请输入 {template.get('name')} 参数名称")
-        if not ok or not key:
+        message_box = CustomMessageBox("输入键名", f"请输入 {template.get('name')} 参数名称", parent=self)
+        if message_box.exec():
+            key = message_box.get_text()
+            new_item = self.create_item(parent, key, default_data)
+            self.build_tree(default_data, new_item)
+            parent.setExpanded(True)
+        else:
             return
-        new_item = self.create_item(parent, key, default_data)
-        self.build_tree(default_data, new_item)
-        parent.setExpanded(True)
 
     def copy_node(self):
         item = self.tree.currentItem()
@@ -404,8 +429,10 @@ class ConfigSettingDialog(QDialog):
             return
         key = None
         if t == "dict":
-            key, ok = QInputDialog.getText(self, "参数键名", "请输入参数名称：")
-            if not ok or not key:
+            message_box = CustomMessageBox("参数键名", "请输入参数名称：", parent=self)
+            if message_box.exec():
+                key = message_box.get_text()
+            else:
                 return
         types = {
             "字符串": "",
@@ -428,6 +455,68 @@ class ConfigSettingDialog(QDialog):
         # 新增逻辑：若添加到根节点，更新顶部按钮
         if cur is self.tree.invisibleRootItem():
             self.create_top_buttons()
+
+    def load_config_list(self):
+        """
+        扫描 config 目录下的所有 .yaml 和 .yml 文件，填充到 ComboBox
+        """
+        config_dir = os.path.dirname(self.parent.config.param_definitions_path)  # 假设 parent.config 存在
+        search_dirs = [config_dir] if os.path.isdir(config_dir) else []
+
+        # 也可以扩展其他路径，比如当前目录
+        if not search_dirs:
+            search_dirs = ['.']
+
+        files = []
+        for d in search_dirs:
+            try:
+                for f in os.listdir(d):
+                    if f.lower().endswith(('.yaml', '.yml')) and f != "default.yaml":
+                        files.append(os.path.abspath(os.path.join(d, f)))
+            except:
+                pass
+
+        yml_files = ["default.yaml"] + [os.path.basename(f) for f in files]
+        self.config_combo.clear()
+        self.config_files_map = {}  # ✅ 确保初始化
+        self.config_combo.addItems(yml_files)
+        self.config_files_map = {os.path.basename(f): f for f in files} | {"default.yaml": os.path.join(config_dir, "default.yaml")}
+
+        self.config_combo.setCurrentText(0)
+
+    def on_config_switched(self, filename):
+        if not filename:
+            return
+        file_path = self.config_files_map.get(filename)
+        if not file_path:
+            return
+
+        # 询问是否保存当前更改（可选）
+        # 这里简化：直接加载
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = yaml.load(f) or {}
+
+            # 更新 parent 的配置路径
+            self.parent.config.param_definitions_path = file_path
+
+            # 清空并重建树
+            self.tree.clear()
+            self.build_tree(data)
+            self.create_top_buttons()
+
+            # 更新 ComboBox 当前项（确保同步）
+            self.config_combo.setCurrentText(filename)
+
+            # 可选：通知主界面刷新
+            if hasattr(self.parent, 'load_config'):
+                self.parent.load_config(file_path)
+                self.parent.reload_tree()
+
+        except Exception as e:
+            import traceback
+            logger.error(traceback.format_exc())
+            QMessageBox.critical(self, "加载失败", f"无法加载配置文件：{str(e)}")
 
     def export_config(self):
         # 弹出文件保存对话框，设置默认后缀为.yaml

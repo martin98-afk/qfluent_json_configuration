@@ -290,7 +290,7 @@ class JSONEditor(QWidget):
         self.commandBar.addActions(
             [
                 Action(FIF.FOLDER, '打开文件', triggered=self.import_config),
-                Action(FIF.SAVE, '保存文件', triggered=self.auto_save),
+                Action(FIF.SAVE, '保存文件', triggered=lambda: self.auto_save("保存")),
                 Action(FIF.SAVE_AS, '另存文件', triggered=self.export_config),
                 Action(get_icon("上传"), '上传配置', triggered=self.do_upload),
             ]
@@ -678,7 +678,7 @@ class JSONEditor(QWidget):
 
     def do_upload(self, name=None):
         name = name if name else self.current_file
-        self.auto_save()
+        self.auto_save(version_prefix="上传")
         work = Worker(
             self.config.api_tools.get("file_upload"),
             file_path=os.path.join(
@@ -1279,7 +1279,7 @@ class JSONEditor(QWidget):
         self.switch_to_file(filename)
         self.create_successbar("文件加载成功！")
 
-    def auto_save(self):
+    def auto_save(self, version_prefix="保存"):
         if not self.current_file:
             return
 
@@ -1287,7 +1287,7 @@ class JSONEditor(QWidget):
         data = self.tree_to_dict()
         file_name = f"{self.current_file}.{self.file_format.get(self.current_file)}"
         save_config(os.path.join(PATH_PREFIX, file_name), data)
-        save_history(os.path.join(PATH_PREFIX, file_name), data)
+        save_history(os.path.join(PATH_PREFIX, file_name), data, version_prefix)
         # 显示保存成功消息
         save_time = datetime.now().strftime("%H:%M:%S")
         self.create_successbar(f"文件已保存! ({save_time})")
@@ -1343,7 +1343,7 @@ class JSONEditor(QWidget):
         if not path:
             return
         save_config(path, data)
-        save_history(path, data)
+        save_history(path, data, "保存")
         save_time = datetime.now().strftime("%H:%M:%S")
         self.create_successbar(f"文件已保存! ({save_time})!")
         self.orig_files[".".join(os.path.basename(path).split(".")[:-1])] = path

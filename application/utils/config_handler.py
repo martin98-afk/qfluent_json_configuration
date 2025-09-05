@@ -76,7 +76,7 @@ def load_history():
     return history
 
 
-def save_history(path, config):
+def save_history(path, config, version_prefix="保存"):
     history = defaultdict(list)
     file_name = ".".join(os.path.basename(path).split(".")[:-1])
     file_type = os.path.basename(path).split(".")[-1]
@@ -101,7 +101,7 @@ def save_history(path, config):
     history[file_name].append(
         {
             "file_type": file_type,
-            "save_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "save_time": f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ({version_prefix})",
             "history_data": config
         }
     )
