@@ -641,10 +641,10 @@ class JSONEditor(QWidget):
             )
         )
         worker.signals.error.connect(
-            lambda: (
+            lambda error_msg: (
                 self.model_selector_btn.setText("<无关联模型>"),
                 self.model_selector_btn.setIcon(QIcon()),
-                self.create_errorbar
+                self.create_errorbar(error_msg)
             )
         )
         self.thread_pool.start(worker)
