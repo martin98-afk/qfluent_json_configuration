@@ -249,13 +249,6 @@ param-structure:
         options:
         - cpu
         - '0'
-  新工况控制模式2:
-    type: dropdown
-    default: 三个最近工况高频
-    options:
-    - 所有数据高频
-    - 三个最近工况高频
-    - 给定频率
 param-template:
   text:
     name: 文本编辑

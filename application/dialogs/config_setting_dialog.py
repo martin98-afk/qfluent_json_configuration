@@ -259,7 +259,6 @@ class ConfigSettingDialog(QDialog):
                 self.tree.clear()
                 self.build_tree(data)
                 self.parent.load_config(path)
-                self.parent.reload_tree()
                 QMessageBox.information(self, "导入成功", f"成功导入配置文件：{os.path.basename(path)}")
                 # ✅ 导入后也刷新配置列表，确保下次能选中它
                 self.load_config_list()
@@ -393,7 +392,6 @@ class ConfigSettingDialog(QDialog):
         QMessageBox.information(self, "保存成功", "配置文件已更新！")
         if self.parent:
             self.parent.load_config(self.parent.config.param_definitions_path)
-            self.parent.reload_tree()
 
     def delete_parameter(self):
         cur = self.tree.currentItem()

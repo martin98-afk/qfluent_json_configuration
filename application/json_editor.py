@@ -2,7 +2,7 @@ import copy
 import os
 import re
 from datetime import datetime
-from typing import Any
+from typing import Any, Dict
 
 from PyQt5.QtCore import (
     Qt,
@@ -1614,6 +1614,24 @@ class JSONEditor(QWidget):
             if self.config.params_type.get(parent_path) == "subgroup":
                 self.mark_item_locked(item)
 
+    def merge_config(self, config1: Dict, config2: Dict):
+        for key, value in config1.items():
+            if key in config2:
+                if isinstance(value, dict) and isinstance(config2[key], dict):
+                    self.merge_config(value, config2[key])
+                elif isinstance(value, list) and isinstance(config2[key], list):
+                    config2[key].extend(value)
+                elif isinstance(value, str) and isinstance(config2[key], str):
+                    config2[key] = value
+                elif isinstance(value, str) and isinstance(config2[key], dict):
+                    pass
+                else:
+                    config2[key] = value
+            else:
+                config2[key] = value
+
+        return config2
+
     @error_catcher_decorator
     def load_tree(self, data, parent=None, path_prefix="", bind_model=True):
         # 加载配置时如果有对应绑定模型后的配置，自动关联到对应模型
@@ -1651,7 +1669,7 @@ class JSONEditor(QWidget):
             self.model_selector_btn.setText("<无关联模型>")
             self.model_selector_btn.setIcon(QIcon())
         # 如果有没有在初始化参数中出现的参数，则自动根据初始化参数添加
-        data = self.config.init_params | data if not path_prefix else data
+        data = self.merge_config(self.config.init_params, data) if not path_prefix else data
         # 正常加载参数配置
         for key, value in data.items():
             full_path = f"{path_prefix}/{key}" if path_prefix and not re.search(r' [参数]*[0-9]+', key) else key
