@@ -1669,7 +1669,7 @@ class JSONEditor(QWidget):
             self.model_selector_btn.setText("<无关联模型>")
             self.model_selector_btn.setIcon(QIcon())
         # 如果有没有在初始化参数中出现的参数，则自动根据初始化参数添加
-        data = self.merge_config(self.config.init_params, data) if not path_prefix else data
+        data = self.merge_config(self.config.init_params, self.config.init_params | data) if not path_prefix else data
         # 正常加载参数配置
         for key, value in data.items():
             full_path = f"{path_prefix}/{key}" if path_prefix and not re.search(r' [参数]*[0-9]+', key) else key
