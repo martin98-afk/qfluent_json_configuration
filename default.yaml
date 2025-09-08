@@ -96,13 +96,6 @@ param-structure:
         - '-5'
         - '5'
         - '1'
-      偏移量2:
-        type: slider
-        default: '0'
-        options:
-        - '-5'
-        - '5'
-        - '1'
   目标参数:
     type: subgroup
     subchildren:
@@ -256,6 +249,13 @@ param-structure:
         options:
         - cpu
         - '0'
+  新工况控制模式2:
+    type: dropdown
+    default: 三个最近工况高频
+    options:
+    - 所有数据高频
+    - 三个最近工况高频
+    - 给定频率
 param-template:
   text:
     name: 文本编辑

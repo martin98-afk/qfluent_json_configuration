@@ -1643,8 +1643,6 @@ class JSONEditor(QWidget):
             self.model_selector_btn.setText("<无关联模型>")
             self.model_selector_btn.setIcon(QIcon())
         # 如果有没有在初始化参数中出现的参数，则自动根据初始化参数添加
-        print(self.config.init_params)
-        print(data)
         data = self.config.init_params | data if not path_prefix else data
         # 正常加载参数配置
         for key, value in data.items():
@@ -1667,6 +1665,7 @@ class JSONEditor(QWidget):
 
                 self.lock_item(key, parent, item)
                 if re.search(r' [参数]*[0-9]+', full_path):
+                    value = self.config.subchildren_default.get(path_prefix, {}) | value
                     self.load_tree(value, item, path_prefix=path_prefix, bind_model=False)
                 else:
                     self.load_tree(value, item, path_prefix=full_path, bind_model=False)
