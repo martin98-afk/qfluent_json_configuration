@@ -44,6 +44,7 @@ class UploadModelMessageBox(MessageBoxBase):
         self.env_combo.setMaxVisibleItems(15)
         self.env_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         env_list = parent.config.api_tools.get("di_env").call()
+        self.env_dict = {item[0]: item[1] for item in env_list}
         # 示例运行环境，可以替换成实际调用接口返回的内容
         self.env_combo.addItems([item[0] for item in env_list])
         env_layout.addWidget(env_label)
@@ -57,4 +58,4 @@ class UploadModelMessageBox(MessageBoxBase):
         self.widget.setMinimumWidth(350)
 
     def get_text(self):
-        return self.file_line_edit.text(), self.env_combo.currentText()
+        return self.file_line_edit.text(), self.env_dict.get(self.env_combo.currentText())

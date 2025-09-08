@@ -54,7 +54,7 @@ from application.utils.utils import (
     get_icon,
     get_file_name,
     error_catcher_decorator,
-    get_unique_name, )
+    get_unique_name, resource_path)
 from application.widgets.component_log_message_box import LogMessageBox
 from application.widgets.copy_model_messagebox import CopyModelMessageBox
 from application.widgets.custom_input_messagebox import CustomMessageBox
@@ -116,7 +116,10 @@ class JSONEditor(QWidget):
         self.config = ParamConfigLoader(config_path)
         self.config.params_loaded.connect(self.on_config_loaded)
         if self.current_file in self.model_bindings:
-            self.config.database_tools_loaded.connect(lambda: self.bind_model(self.model_bindings[self.current_file]))
+            # 数据库工具加载完后自动将配置与模型进行关联
+            self.config.database_tools_loaded.connect(
+                lambda: self.bind_model(self.model_bindings[self.current_file])
+            )
         self.config.load_async()
 
     def on_config_loaded(self):
@@ -323,6 +326,13 @@ class JSONEditor(QWidget):
         ])
 
         # 添加始终隐藏的动作
+        self.commandBar.addHiddenAction(
+            Action(
+                get_icon("上传"),
+                '上传预制模型',
+                triggered=self.upload_prepared_model
+            )
+        )
         self.commandBar.addHiddenAction(
             Action(
                 FIF.GLOBE,
@@ -1619,14 +1629,8 @@ class JSONEditor(QWidget):
             if key in config2:
                 if isinstance(value, dict) and isinstance(config2[key], dict):
                     self.merge_config(value, config2[key])
-                elif isinstance(value, list) and isinstance(config2[key], list):
-                    config2[key].extend(value)
-                elif isinstance(value, str) and isinstance(config2[key], str):
-                    config2[key] = value
-                elif isinstance(value, str) and isinstance(config2[key], dict):
-                    pass
                 else:
-                    config2[key] = value
+                    pass
             else:
                 config2[key] = value
 
@@ -2112,6 +2116,7 @@ class JSONEditor(QWidget):
         dialog = UploadModelMessageBox(self)
         if dialog.exec():
             file_path, selected_env = dialog.get_text()
+            print(file_path)
             if file_path:
                 # 此处调用上传接口并附带运行环境信息，如有需要
                 worker = Worker(
@@ -2119,6 +2124,20 @@ class JSONEditor(QWidget):
                     file_path, selected_env
                 )
                 worker.signals.finished.connect(lambda: self.create_successbar(f"{file_path} 上传成功！"))
+                worker.signals.error.connect(self.create_errorbar)
+                self.thread_pool.start(worker)
+
+    def upload_prepared_model(self):
+        dialog = UploadModelMessageBox(self)
+        _, selected_env = dialog.get_text()
+        for model_path in os.listdir(os.path.join(resource_path("./"), "预制模型")):
+            if model_path:
+                # 此处调用上传接口并附带运行环境信息，如有需要
+                worker = Worker(
+                    self.config.api_tools.get("model_upload"),
+                    os.path.join(resource_path("./"), "预制模型", model_path), selected_env
+                )
+                worker.signals.finished.connect(lambda: self.create_successbar(f"{model_path} 上传成功！"))
                 worker.signals.error.connect(self.create_errorbar)
                 self.thread_pool.start(worker)
 
