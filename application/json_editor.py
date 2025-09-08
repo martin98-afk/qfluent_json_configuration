@@ -122,6 +122,8 @@ class JSONEditor(QWidget):
     def on_config_loaded(self):
         if len(self.open_files) == 0:
             self.new_config()
+        else:
+            self.reload_tree()
 
     def init_ui(self):
         # —— 高 DPI 缩放参数 ——
@@ -638,7 +640,13 @@ class JSONEditor(QWidget):
                 self.create_successbar(f"已绑定模型: {self.model_bindings.get(self.current_file)}")
             )
         )
-        worker.signals.error.connect(self.create_errorbar)
+        worker.signals.error.connect(
+            lambda: (
+                self.model_selector_btn.setText("<无关联模型>"),
+                self.model_selector_btn.setIcon(QIcon()),
+                self.create_errorbar
+            )
+        )
         self.thread_pool.start(worker)
 
     def merge_model_params(self, current_data, model_params, model_name):

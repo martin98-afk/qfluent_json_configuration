@@ -261,6 +261,12 @@ class ConfigSettingDialog(QDialog):
                 self.parent.load_config(path)
                 self.parent.reload_tree()
                 QMessageBox.information(self, "导入成功", f"成功导入配置文件：{os.path.basename(path)}")
+                # ✅ 导入后也刷新配置列表，确保下次能选中它
+                self.load_config_list()
+                imported_filename = os.path.basename(path)
+                if imported_filename in self.config_files_map:
+                    self.config_combo.setCurrentText(imported_filename)
+
             except Exception as e:
                 QMessageBox.critical(self, "导入失败", f"导入配置失败：{e}")
         self.create_top_buttons()  # Update buttons after restore
@@ -511,7 +517,6 @@ class ConfigSettingDialog(QDialog):
             # 可选：通知主界面刷新
             if hasattr(self.parent, 'load_config'):
                 self.parent.load_config(file_path)
-                self.parent.reload_tree()
 
         except Exception as e:
             import traceback
@@ -549,6 +554,14 @@ class ConfigSettingDialog(QDialog):
                 yaml.dump(result, f)
 
             QMessageBox.information(self, "导出成功", f"配置已保存到：{os.path.basename(path)}")
+            # ✅ 关键修复：重新加载配置列表，使新文件出现在 ComboBox 中
+            self.load_config_list()
+
+            # ✅ 自动切换到刚导出的配置（提升体验）
+            exported_filename = os.path.basename(path)
+            if exported_filename in self.config_files_map:  # 理论上一定在，因为刚写入
+                self.config_combo.setCurrentText(exported_filename)
+
         except Exception as e:
             QMessageBox.critical(self, "导出失败", f"保存配置时发生错误：{str(e)}")
 
