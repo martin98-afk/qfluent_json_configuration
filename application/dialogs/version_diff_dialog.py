@@ -48,7 +48,6 @@ class VersionDiffDialog(QDialog):
             | Qt.WindowCloseButtonHint
         )
         self.setWindowTitle("历史版本对比")
-        self.setMinimumSize(1500, 750)
         # 动态加载 file_map
         self.file_map = file_map
         self.history_file_name = history_file_name
@@ -110,9 +109,6 @@ class VersionDiffDialog(QDialog):
         self.history_tree.setHeaders()
         self.history_tree.header().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self.history_tree.header().setSectionResizeMode(1, QHeaderView.Stretch)
-        self.history_tree.setStyleSheet(
-            "QTreeWidget { background-color: #f8f8f8; border: 1px solid #ccc; font-size: 20px; }"
-        )
         self.history_tree.itemClicked.connect(self.on_history_item_selected)
         body_layout.addWidget(self.history_tree)
 
@@ -147,9 +143,6 @@ class VersionDiffDialog(QDialog):
         self.current_tree.setHeaders()
         self.current_tree.header().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self.current_tree.header().setSectionResizeMode(1, QHeaderView.Stretch)
-        self.current_tree.setStyleSheet(
-            "QTreeWidget { background-color: #f8f8f8; border: 1px solid #ccc; font-size: 20px; }"
-        )
         self.current_tree.itemClicked.connect(self.on_current_item_selected)
         body_layout.addWidget(self.current_tree)
 

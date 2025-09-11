@@ -296,6 +296,7 @@ class ServiceStatusMonitor(QWidget):
 
     def on_services_load(self, services):
         """处理服务列表加载结果，保留之前的监控状态"""
+        self.view_all_records()
         # 标记开始加载服务
         self.loading_services = True
 
