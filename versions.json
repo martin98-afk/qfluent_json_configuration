@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.3.7",
+    "publishDate": "2025-09-11 09:57",
+    "forceUpdate": true,
+    "publishNotes": [
+      "refactor(application): 优化服务状态监控和历史版本对比功能",
+      "- 在服务状态监控中添加查看所有记录的功能",
+      "- 移除历史版本对比对话框的最小尺寸限制和自定义样式",
+      "- 预制模型组件代码修正"
+    ]
+  },{
     "version": "1.3.6",
     "publishDate": "2025-09-08 16:33",
     "forceUpdate": true,
