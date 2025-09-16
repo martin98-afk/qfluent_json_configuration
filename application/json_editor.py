@@ -1414,7 +1414,7 @@ class JSONEditor(QWidget):
         if self.config.params_desc.get(full_path):
             menu.addAction(
                 Action(
-                    FIF.SETTING, "参数说明",
+                    FIF.INFO, "参数说明",
                     triggered=lambda: self.showTeachingTip(
                         item, full_path.split("/")[-1], self.config.params_desc.get(full_path), duration=-1
                     )
@@ -1426,7 +1426,9 @@ class JSONEditor(QWidget):
         menu.exec_(self.tree.viewport().mapToGlobal(pos), ani=False)
 
     def clone_item(self, item):
-        new_item = ConfigurableTreeWidgetItem(item.text(0), item.text(1), item.full_path, item.control_type, self)
+        new_item = ConfigurableTreeWidgetItem(
+            item.text(0), item.text(1), item.full_path, item.control_type, item.required, item.desc, self
+        )
         for i in range(item.childCount()):
             child = item.child(i)
             new_child = self.clone_item(child)
@@ -1688,15 +1690,16 @@ class JSONEditor(QWidget):
             full_path = f"{path_prefix}/{key}" if path_prefix and not re.search(r' [参数]*[0-9]+', key) else key
             param_type = self.config.params_type.get(full_path)
             required = self.config.require_flag.get(full_path)
+            desc = self.config.params_desc.get(full_path)
             if isinstance(value, list):
-                item = ConfigurableTreeWidgetItem(key, list2str(value), editor=self, required=required)
+                item = ConfigurableTreeWidgetItem(key, list2str(value), editor=self, required=required, desc=desc)
                 if parent:
                     parent.addChild(item)
                 else:
                     self.tree.addTopLevelItem(item)
 
             elif isinstance(value, dict):
-                item = ConfigurableTreeWidgetItem(key, "", editor=self, required=required)
+                item = ConfigurableTreeWidgetItem(key, "", editor=self, required=required, desc=desc)
                 if parent:
                     parent.addChild(item)
                 else:
@@ -1716,7 +1719,8 @@ class JSONEditor(QWidget):
                     full_path,
                     control_type=param_type,
                     editor=self,
-                    required=required
+                    required=required,
+                    desc=desc
                 )
                 if parent:
                     parent.addChild(item)
@@ -1798,17 +1802,16 @@ class JSONEditor(QWidget):
 
             for sub_param, value in sub_params.items():
                 sub_param_path = f"{full_path}/{sub_param}"
-                param_type = self.config.params_type.get(sub_param_path)
-                required = self.config.require_flag.get(sub_param_path)
-                if param_type == "fetch" and tag_name is not None:
+                if self.config.params_type.get(sub_param_path) == "fetch" and tag_name is not None:
                     value = tag_name
                 sub_item = ConfigurableTreeWidgetItem(
                     sub_param,
                     value,
                     sub_param_path,
-                    control_type=param_type,
-                    editor=self,
-                    required=required
+                    control_type=self.config.params_type.get(sub_param_path),
+                    required=self.config.require_flag.get(sub_param_path),
+                    desc=self.config.params_desc.get(sub_param_path),
+                    editor=self
                 )
 
                 sub_param_item.addChild(sub_item)

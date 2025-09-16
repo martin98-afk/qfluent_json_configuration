@@ -14,7 +14,7 @@ from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import (
     QTreeWidgetItem, QCheckBox, QComboBox, QLineEdit, QLabel, QWidget
 )
-from qfluentwidgets import SwitchButton
+from qfluentwidgets import SwitchButton, TransparentToolButton, FluentIcon, TeachingTip, TeachingTipTailPosition
 
 from application.widgets.multi_select_combobox import FancyMultiSelectComboBox
 from application.widgets.tree_edit_command import TreeEditCommand
@@ -40,6 +40,7 @@ class ConfigurableTreeWidgetItem(QTreeWidgetItem):
             control_type: Optional[str] = None,  # 默认不指定类型 [[9]]
             editor = None,
             required: bool = False,
+            desc: str = None
     ):
         super().__init__()
         self.editor = editor
@@ -47,6 +48,7 @@ class ConfigurableTreeWidgetItem(QTreeWidgetItem):
         self.key = key
         self.setText(0, key)
         self.required = required
+        self.desc = desc
 
         self.full_path = full_path
         self.control_type = control_type
@@ -282,20 +284,15 @@ class ConfigurableTreeWidgetItem(QTreeWidgetItem):
             )
 
     def set_item_widget(self):
-        # 必选
-        if self.required:
+        # ========== 第 0 列：用 setText 设置 key + 星号（保留原始样式） ==========
+        display_text = self.key
+        # if self.required:
+        #     display_text += " (必填)"
+        # if self.desc:
+        #     display_text += " (带说明)"
+        self.setText(0, display_text)  # ← 你原来的逻辑，完全保留！
 
-            self.setForeground(0, QColor("transparent"))  # 和背景色一样
-            self.setBackground(0, QColor("transparent"))  # 确保背景也
-            display_key = self.key
-            display_key += " <span style='color:red;'>*</span>"
-
-            # 创建 QLabel 并设置富文本
-            self.key_label = QLabel(display_key)
-            self.key_label.setStyleSheet("color: black; background-color: transparent;")
-            # 将 QLabel 设置为 item 的 widget
-            self.editor.tree.setItemWidget(self, 0, self.key_label)
-
+        # ========== 第 1 列：设置编辑控件 ==========
         if self.control_type == ConfigControlType.CHECKBOX:
             self.editor.tree.setItemWidget(self, 1, self.checkbox)
         elif self.control_type == ConfigControlType.SLIDER:
@@ -306,8 +303,27 @@ class ConfigurableTreeWidgetItem(QTreeWidgetItem):
             self.editor.tree.setItemWidget(self, 1, self.text_editor)
         elif self.control_type == ConfigControlType.MULTISELECT_DROPDOWN:
             self.editor.tree.setItemWidget(self, 1, self.multiselect_dropdown)
-        else:
-            pass
+
+        # # ========== 第 3 列：如果有说明，放置问号按钮 ==========
+        # if self.desc:
+        #     help_button = TransparentToolButton(FluentIcon.QUESTION)
+        #     help_button.setFixedSize(24, 24)
+        #     help_button.setCursor(Qt.PointingHandCursor)
+        #     help_button.setToolTip("点击查看说明")
+        #
+        #     # 绑定点击事件 → 显示 TeachingTip
+        #     def show_teaching_tip():
+        #         TeachingTip.create(
+        #             target=help_button,
+        #             title="使用说明",
+        #             content=self.desc,
+        #             tailPosition=TeachingTipTailPosition.LEFT,  # 从左侧弹出，避免被树挡住
+        #             duration=-1,  # 永不自动关闭
+        #             parent=self.editor
+        #         )
+        #
+        #     help_button.clicked.connect(show_teaching_tip)
+        #     self.editor.tree.setItemWidget(self, 2, help_button)  # 👈 关键：放在第3列！
 
     def get_target_widget(self) -> Optional[QWidget]:
         """获取用于显示 TeachingTip 的目标控件（通常是第1列的编辑控件）"""
