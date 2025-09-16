@@ -28,7 +28,7 @@ from PyQt5.QtWidgets import (
 )
 from deepdiff import DeepDiff
 from qfluentwidgets import FluentIcon as FIF, CommandBar, TabBar, SearchLineEdit, MessageBox, InfoBar, InfoBarPosition, \
-    InfoBarIcon, PushButton
+    InfoBarIcon, PushButton, TeachingTip, TeachingTipTailPosition
 from qfluentwidgets import RoundMenu, Action
 
 from application.dialogs.histogram_range_set_dialog import IntervalPartitionDialog
@@ -1372,7 +1372,6 @@ class JSONEditor(QWidget):
         QShortcut(QKeySequence("Ctrl+A"), self, self.add_sub_param)
         QShortcut(QKeySequence("Delete"), self, self.remove_param)
         QShortcut(QKeySequence("Tab"), self, self.load_history_menu)
-
         # 添加撤销/重做快捷键
         QShortcut(QKeySequence("Ctrl+Z"), self, self.undo_action)
         QShortcut(QKeySequence("Ctrl+Y"), self, self.redo_action)
@@ -1384,7 +1383,8 @@ class JSONEditor(QWidget):
         full_path = self.get_path_by_item(item)
         # 创建上下文菜单
         menu = RoundMenu()
-        if item and self.config.params_type.get(full_path) == "subgroup" and not re.search(r' [参数]*[0-9]+', item.text(0)):
+        if (item and self.config.params_type.get(full_path) == "subgroup" and
+                not re.search(r' [参数]*[0-9]+', item.text(0))):
             menu.addActions(
                 [
                     Action(FIF.ADD, "添加子参数", triggered=lambda: self.add_sub_param(None, None))
@@ -1411,6 +1411,15 @@ class JSONEditor(QWidget):
         menu.addAction(Action(FIF.UP, "折叠全部", triggered=self.tree.collapseAll))
 
         menu.addSeparator()
+        if self.config.params_desc.get(full_path):
+            menu.addAction(
+                Action(
+                    FIF.SETTING, "参数说明",
+                    triggered=lambda: self.showTeachingTip(
+                        item, full_path.split("/")[-1], self.config.params_desc.get(full_path), duration=-1
+                    )
+                )
+            )
         menu.addAction(
             Action(FIF.SETTING, "参数设置", triggered=lambda: self._goto_structure_settings(full_path.split("/")[0])))
 
@@ -2278,6 +2287,24 @@ class JSONEditor(QWidget):
             jump_button.clicked.connect(button_fn)
 
         bar.show()
+
+    def showTeachingTip(self, item: ConfigurableTreeWidgetItem, name: str, desc: str, duration: int):
+        """展示参数说明"""
+        target_widget = item.get_target_widget()
+        if target_widget is None:
+            # fallback：比如用 tree 的 viewport + 定位到 item 位置
+            target_widget = self.tree.viewport()
+
+        TeachingTip.create(
+            target=target_widget,
+            icon=InfoBarIcon.INFORMATION,
+            title=name,
+            content=desc,
+            isClosable=True,
+            tailPosition=TeachingTipTailPosition.BOTTOM,
+            duration=duration,
+            parent=self
+        )
 
     def _open_platform(self):
         QDesktopServices.openUrl(

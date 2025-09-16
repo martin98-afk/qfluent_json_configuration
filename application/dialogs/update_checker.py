@@ -1,6 +1,7 @@
 import os
 import subprocess
 import sys
+import time
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QMessageBox, QProgressDialog, QWidget
@@ -98,9 +99,10 @@ class UpdateChecker(QWidget):
 
     def _show_update_dialog(self, latest_release):
         update_notes = latest_release.get("body", "无更新说明")  # 获取更新说明
+        update_datetime = latest_release.get("created_at")
         msg_box = Dialog(
             "版本更新",
-            f"发现新版本 {latest_release['tag_name']}，当前版本 {self.current_version}，是否更新？\n\n更新内容：\n{update_notes}",
+            f"发现新版本 {latest_release['tag_name']}，当前版本 {self.current_version}，是否更新？\n\n更新时间: {update_datetime}\n\n更新内容：\n{update_notes}",
             self
         )
         msg_box.yesButton.setText("更新")
@@ -168,6 +170,7 @@ del /f /q "{main_exe}"
 
         subprocess.Popen([script_path], shell=True)
         self.create_successbar("更新成功", "已成功更新，当前工具将稍后关闭！")
+        time.sleep(5)
         subprocess.Popen([file_path])  # 自动启动新程序
         sys.exit()
 

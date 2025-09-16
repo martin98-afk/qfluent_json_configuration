@@ -45,19 +45,22 @@ class ParamConfigLoader(QObject):
         self.title = "Json配置工具"
         self.threadpool = QThreadPool.globalInstance()
 
-    def _reset_config(self):
+    def _reset_params_config(self):
+        self.param_structure = {}  # 当前参数结构
+        self.init_params = {}  # 参数初始化数据
+        self.params_type = {}  # 参数类型
+        self.require_flag = {}  # 是否为必填参数 （当前未实装，展示效果不好）
+        self.params_default = {}  # 参数默认值
+        self.params_options = {}  # 参数可选值
+        self.params_desc = {}  # 参数填写说明
+        self.subchildren_default = {}  # 子参数默认值
+        self.model_binding_structure = {}  # 参数配置绑定模型结构
+
+    def _reset_tools_config(self):
         # 还原所有配置
-        self.patch_info = {}
-        self.param_structure = {}
-        self.init_params = {}
-        self.params_type = {}
-        self.require_flag = {}
-        self.params_default = {}
-        self.params_options = {}
-        self.subchildren_default = {}
-        self.model_binding_structure = {}
+        self.patch_info = {}   # 版本更新记录
         self.api_tools = {}
-        self.tab_names = {}
+        self.tab_names = {}   # 配置标签中文名称
         self.tool_type_dict = {}
         self.param_templates = {}
 
@@ -122,7 +125,8 @@ class ParamConfigLoader(QObject):
     # ✅ 公共接口
     # ==============================
     def load_async(self):
-        self._reset_config()
+        self._reset_params_config()
+        self._reset_tools_config()
         self.load_params_async()
         self.load_tools_async()
 
@@ -299,13 +303,13 @@ class ParamConfigLoader(QObject):
         """实际参数解析逻辑"""
         self.param_structure = param_structure
         self.init_params = self._recursive_parse(
-            param_structure, self.params_type, self.require_flag, self.params_default, self.params_options
+            param_structure, self.params_type, self.require_flag, self.params_default, self.params_options, self.params_desc
         )
 
     def add_binding_model_params(self, param_structure: dict):
         self.model_binding_structure = param_structure
         self.init_params = self.init_params | self._recursive_parse(
-            self.model_binding_structure, self.params_type, self.require_flag, self.params_default, self.params_options
+            self.model_binding_structure, self.params_type, self.require_flag, self.params_default, self.params_options, self.params_desc
         )
 
     def remove_binding_model_params(self):
@@ -313,14 +317,15 @@ class ParamConfigLoader(QObject):
         self.require_flag = {}
         self.params_default = {}
         self.params_options = {}
+        self.params_desc = {}
         self.subchildren_default = {}
         self.model_binding_structure = {}
         self.init_params = self._recursive_parse(
-            self.param_structure, self.params_type, self.require_flag, self.params_default, self.params_options
+            self.param_structure, self.params_type, self.require_flag, self.params_default, self.params_options, self.params_desc
         )
 
     def _recursive_parse(
-            self, structure, type_dict, require_flag, default_dict, options_dict, path_prefix=""
+            self, structure, type_dict, require_flag, default_dict, options_dict, desc_dict, path_prefix=""
     ):
         result = {}
         for key, node in structure.items():
@@ -330,12 +335,14 @@ class ParamConfigLoader(QObject):
 
             if "default" in node:
                 default_dict[full_path] = node["default"]
+            if "describe" in node:
+                desc_dict[full_path] = node["describe"]
             if "options" in node:
                 options_dict[full_path] = node["options"]
 
             if "children" in node:
                 result[key] = self._recursive_parse(
-                    node["children"], type_dict, require_flag, default_dict, options_dict, full_path
+                    node["children"], type_dict, require_flag, default_dict, options_dict, desc_dict, full_path
                 )
             elif "subchildren" in node:
                 result[key] = ""
@@ -345,10 +352,12 @@ class ParamConfigLoader(QObject):
                     require_flag,
                     default_dict,
                     options_dict,
+                    desc_dict,
                     full_path,
                 )
             else:
                 result[key] = node.get("default", "")
+
         return result
 
     # ==============================

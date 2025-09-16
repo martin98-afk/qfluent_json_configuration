@@ -9,10 +9,10 @@
 import re
 from typing import Union, List, Any, Optional
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import (
-    QTreeWidgetItem, QCheckBox, QComboBox, QLineEdit, QLabel
+    QTreeWidgetItem, QCheckBox, QComboBox, QLineEdit, QLabel, QWidget
 )
 from qfluentwidgets import SwitchButton
 
@@ -308,3 +308,19 @@ class ConfigurableTreeWidgetItem(QTreeWidgetItem):
             self.editor.tree.setItemWidget(self, 1, self.multiselect_dropdown)
         else:
             pass
+
+    def get_target_widget(self) -> Optional[QWidget]:
+        """获取用于显示 TeachingTip 的目标控件（通常是第1列的编辑控件）"""
+        if self.control_type == ConfigControlType.CHECKBOX:
+            return self.checkbox
+        elif self.control_type == ConfigControlType.SLIDER:
+            return self.slider
+        elif self.control_type == ConfigControlType.DROPDOWN:
+            return self.dropdown
+        elif self.control_type == ConfigControlType.TEXT:
+            return self.text_editor
+        elif self.control_type == ConfigControlType.MULTISELECT_DROPDOWN:
+            return self.multiselect_dropdown
+        else:
+            # 普通文本项，返回 None 或 tree 本身（根据需求）
+            return None
