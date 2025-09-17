@@ -9,13 +9,16 @@
 import re
 from typing import Union, List, Any, Optional
 
+from PyQt5 import sip
 from PyQt5.QtCore import Qt, QPoint
-from PyQt5.QtGui import QColor
+from PyQt5.QtGui import QColor, QImage, QPixmap
 from PyQt5.QtWidgets import (
-    QTreeWidgetItem, QCheckBox, QComboBox, QLineEdit, QLabel, QWidget
+    QTreeWidgetItem, QCheckBox, QComboBox, QLineEdit, QLabel, QWidget, QVBoxLayout
 )
-from qfluentwidgets import SwitchButton, TransparentToolButton, FluentIcon, TeachingTip, TeachingTipTailPosition
+from qfluentwidgets import SwitchButton, TransparentToolButton, FluentIcon, TeachingTip, TeachingTipTailPosition, \
+    FlyoutViewBase, BodyLabel, InfoBarIcon
 
+from application.widgets.image_desc_flyout import ImageDescFlyoutView
 from application.widgets.multi_select_combobox import FancyMultiSelectComboBox
 from application.widgets.tree_edit_command import TreeEditCommand
 from application.widgets.value_slider import SliderEditor
@@ -49,7 +52,7 @@ class ConfigurableTreeWidgetItem(QTreeWidgetItem):
         self.setText(0, key)
         self.required = required
         self.desc = desc
-
+        self.current_teaching_tip = None  # 当前正在显示的说明提示
         self.full_path = full_path
         self.control_type = control_type
         # 兼容模式：仅提供 key 和 value 时创建普通文本项 [[2]]
@@ -86,7 +89,10 @@ class ConfigurableTreeWidgetItem(QTreeWidgetItem):
 
         # 信号连接
         self.text_editor.textEdited.connect(
-            lambda: self._handle_text_change()
+            lambda: (
+                self._handle_text_change(),
+                self._show_desc_teaching_tip(self.text_editor)
+            )
         )
 
     def _init_checkbox(self, value: Any):
@@ -101,6 +107,10 @@ class ConfigurableTreeWidgetItem(QTreeWidgetItem):
         self.checkbox.setOnText(options[1])
         self.checkbox.checkedChanged.connect(
             lambda: self._handle_checkbox_change(options)
+        )
+        # ✅ SwitchButton 有 clicked 或 toggled，用 clicked 模拟“激活”
+        self.checkbox.checkedChanged.connect(
+            lambda: self._show_desc_teaching_tip(self.checkbox)
         )
 
     def _init_slider(self, value: Union[int, float]):
@@ -119,7 +129,10 @@ class ConfigurableTreeWidgetItem(QTreeWidgetItem):
 
         # 绑定事件
         self.slider.valueChanged.connect(
-            lambda val: self._handle_slider_change(val)
+            lambda val: (
+                self._handle_slider_change(val),
+                self._show_desc_teaching_tip(self.slider)
+            )
         )
 
     def _init_dropdown(self, value: Any):
@@ -139,7 +152,10 @@ class ConfigurableTreeWidgetItem(QTreeWidgetItem):
 
         # 绑定事件
         self.dropdown.activated.connect(
-            lambda: self._handle_dropdown_change()
+            lambda: (
+                self._handle_dropdown_change(),
+                self._show_desc_teaching_tip(self.dropdown)
+            )
         )
 
     def _init_multiselect_dropdown(self, value: Any):
@@ -158,7 +174,10 @@ class ConfigurableTreeWidgetItem(QTreeWidgetItem):
             self.multiselect_dropdown.set_selected_items([])
 
         self.multiselect_dropdown.selectionChanged.connect(
-            lambda: self._handle_multiselect_dropdown_change()
+            lambda: (
+                self._handle_multiselect_dropdown_change(),
+                self._show_desc_teaching_tip(self.multiselect_dropdown)
+            )
         )
 
     def _get_text_style(self):
@@ -304,27 +323,6 @@ class ConfigurableTreeWidgetItem(QTreeWidgetItem):
         elif self.control_type == ConfigControlType.MULTISELECT_DROPDOWN:
             self.editor.tree.setItemWidget(self, 1, self.multiselect_dropdown)
 
-        # # ========== 第 3 列：如果有说明，放置问号按钮 ==========
-        # if self.desc:
-        #     help_button = TransparentToolButton(FluentIcon.QUESTION)
-        #     help_button.setFixedSize(24, 24)
-        #     help_button.setCursor(Qt.PointingHandCursor)
-        #     help_button.setToolTip("点击查看说明")
-        #
-        #     # 绑定点击事件 → 显示 TeachingTip
-        #     def show_teaching_tip():
-        #         TeachingTip.create(
-        #             target=help_button,
-        #             title="使用说明",
-        #             content=self.desc,
-        #             tailPosition=TeachingTipTailPosition.LEFT,  # 从左侧弹出，避免被树挡住
-        #             duration=-1,  # 永不自动关闭
-        #             parent=self.editor
-        #         )
-        #
-        #     help_button.clicked.connect(show_teaching_tip)
-        #     self.editor.tree.setItemWidget(self, 2, help_button)  # 👈 关键：放在第3列！
-
     def get_target_widget(self) -> Optional[QWidget]:
         """获取用于显示 TeachingTip 的目标控件（通常是第1列的编辑控件）"""
         if self.control_type == ConfigControlType.CHECKBOX:
@@ -340,3 +338,51 @@ class ConfigurableTreeWidgetItem(QTreeWidgetItem):
         else:
             # 普通文本项，返回 None 或 tree 本身（根据需求）
             return None
+
+    def _show_desc_teaching_tip(self, target_widget):
+        """显示说明提示，自动关闭上一个，保持最新一个"""
+        if not self.desc:
+            self._close_current_teaching_tip()
+            return
+
+        if not self.current_teaching_tip or sip.isdeleted(self.current_teaching_tip):
+            # 在说明中查找图片路径
+            if re.search(r"\[img:(.*?)\]", self.desc):
+                img_path = re.search(r"\[img:(.*?)\]", self.desc).group(1)
+                # 解析图像大小
+                img_size = (200, 200)
+                desc = self.desc
+                if re.search(r"\[img:(.*?)\]\((.*?)\)", self.desc):
+                    img_size = re.search(r"\[img:(.*?)\]\((.*?)\)", self.desc).group(2)
+                    img_size = re.search(r"(\d+)x(\d+)", img_size).group(1, 2)
+                    desc = desc.replace(f"({img_size[0]}x{img_size[1]})", "")
+                    img_size = (int(img_size[0]), int(img_size[1]))
+
+                desc = desc.replace(f"[img:{img_path}]", "")
+                tip = TeachingTip.make(
+                    target=target_widget,
+                    view=ImageDescFlyoutView(desc, image_path=img_path, image_size=img_size),
+                    tailPosition=TeachingTipTailPosition.TOP,
+                    duration=3000,
+                    parent=self.editor
+                )
+            else:
+                # 创建新的 tip（不自动消失）
+                tip = TeachingTip.create(
+                    target=target_widget,
+                    icon=InfoBarIcon.INFORMATION,
+                    title='使用说明',
+                    content=self.desc,
+                    tailPosition=TeachingTipTailPosition.TOP,
+                    duration=3000,  # 永不自动消失
+                    parent=self.editor
+                )
+
+            # 保存引用到 editor
+            self.current_teaching_tip = tip
+
+    def _close_current_teaching_tip(self):
+        """关闭 editor 中当前显示的 TeachingTip"""
+        if hasattr(self.editor, 'current_teaching_tip') and self.editor.current_teaching_tip:
+            self.editor.current_teaching_tip.close()
+            self.editor.current_teaching_tip = None

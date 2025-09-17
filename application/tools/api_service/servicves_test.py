@@ -65,7 +65,7 @@ class ServicesTest:
 
     def _construct_response(self, result):
         data = result["data"]
-        data_list = data["result"]
+        data_list = data["result"] if isinstance(data["result"], list) else [data["result"]]
         names = [item["paramName"] for item in data["outputParams"]]
         return {name: val for name, val in zip(names, data_list)}
 

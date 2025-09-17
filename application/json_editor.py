@@ -60,6 +60,7 @@ from application.widgets.copy_model_messagebox import CopyModelMessageBox
 from application.widgets.custom_input_messagebox import CustomMessageBox
 from application.widgets.custom_tree_item import ConfigurableTreeWidgetItem
 from application.widgets.draggable_tree_widget import DraggableTreeWidget
+from application.widgets.image_desc_flyout import ImageDescFlyoutView
 from application.widgets.tree_edit_command import TreeEditCommand
 from application.widgets.upload_dataset_messagebox import UploadDatasetMessageBox
 from application.widgets.upload_model_messagebox import UploadModelMessageBox
@@ -2298,16 +2299,36 @@ class JSONEditor(QWidget):
             # fallback：比如用 tree 的 viewport + 定位到 item 位置
             target_widget = self.tree.viewport()
 
-        TeachingTip.create(
-            target=target_widget,
-            icon=InfoBarIcon.INFORMATION,
-            title=name,
-            content=desc,
-            isClosable=True,
-            tailPosition=TeachingTipTailPosition.BOTTOM,
-            duration=duration,
-            parent=self
-        )
+        if re.search(r"\[img:(.*?)\]", desc):
+            img_path = re.search(r"\[img:(.*?)\]", desc).group(1)
+            # 解析图像大小
+            img_size = (200, 200)
+            desc = desc
+            if re.search(r"\[img:(.*?)\]\((.*?)\)", desc):
+                img_size = re.search(r"\[img:(.*?)\]\((.*?)\)", desc).group(2)
+                img_size = re.search(r"(\d+)x(\d+)", img_size).group(1, 2)
+                desc = desc.replace(f"({img_size[0]}x{img_size[1]})", "")
+                img_size = (int(img_size[0]), int(img_size[1]))
+
+            desc = desc.replace(f"[img:{img_path}]", "")
+            TeachingTip.make(
+                target=target_widget,
+                view=ImageDescFlyoutView(desc, image_path=img_path, image_size=img_size),
+                tailPosition=TeachingTipTailPosition.TOP,
+                duration=5000,
+                parent=self
+            )
+        else:
+            # 创建新的 tip（不自动消失）
+            TeachingTip.create(
+                target=target_widget,
+                icon=InfoBarIcon.INFORMATION,
+                title='参数说明',
+                content=desc,
+                tailPosition=TeachingTipTailPosition.TOP,
+                duration=duration,  # 永不自动消失
+                parent=self
+            )
 
     def _open_platform(self):
         QDesktopServices.openUrl(
