@@ -16,7 +16,7 @@ from PyQt5.QtCore import (
     QEasingCurve,
     QThreadPool, QUrl,
 )
-from PyQt5.QtGui import QColor, QGuiApplication, QIcon, QFontMetrics, QDesktopServices
+from PyQt5.QtGui import QColor, QGuiApplication, QIcon, QFontMetrics, QDesktopServices, QCursor
 from PyQt5.QtGui import QFont, QKeySequence
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QPushButton, QWidget, QMenu, QSizePolicy,
@@ -54,7 +54,7 @@ from application.utils.utils import (
     get_icon,
     get_file_name,
     error_catcher_decorator,
-    get_unique_name, resource_path)
+    get_unique_name, resource_path, generate_uuid)
 from application.widgets.component_log_message_box import LogMessageBox
 from application.widgets.copy_model_messagebox import CopyModelMessageBox
 from application.widgets.custom_input_messagebox import CustomMessageBox
@@ -1692,6 +1692,10 @@ class JSONEditor(QWidget):
             param_type = self.config.params_type.get(full_path)
             required = self.config.require_flag.get(full_path)
             desc = self.config.params_desc.get(full_path)
+            # uuid 参数自动生成
+            if param_type == "uuid" and value == "":
+                value = generate_uuid()
+
             if isinstance(value, list):
                 item = ConfigurableTreeWidgetItem(key, list2str(value), editor=self, required=required, desc=desc)
                 if parent:
@@ -2296,21 +2300,27 @@ class JSONEditor(QWidget):
         """展示参数说明"""
         target_widget = item.get_target_widget()
         if target_widget is None:
-            # fallback：比如用 tree 的 viewport + 定位到 item 位置
-            target_widget = self.tree.viewport()
+            target_widget = QLabel(self)
+            target_widget.resize(1, 1)
+            global_pos = QCursor.pos()
+            local_pos = self.mapFromGlobal(global_pos)
+            target_widget.move(local_pos)
+            target_widget.setAttribute(Qt.WA_TransparentForMouseEvents)  # 不拦截鼠标
+            target_widget.show()
 
         if re.search(r"\[img:(.*?)\]", desc):
             img_path = re.search(r"\[img:(.*?)\]", desc).group(1)
+            desc = desc.replace(f"[img:{img_path}]", "")
+            if "resource_path" in img_path:
+                img_path = img_path.replace("resource_path", resource_path("./"))
             # 解析图像大小
             img_size = (200, 200)
-            desc = desc
             if re.search(r"\[img:(.*?)\]\((.*?)\)", desc):
                 img_size = re.search(r"\[img:(.*?)\]\((.*?)\)", desc).group(2)
                 img_size = re.search(r"(\d+)x(\d+)", img_size).group(1, 2)
                 desc = desc.replace(f"({img_size[0]}x{img_size[1]})", "")
                 img_size = (int(img_size[0]), int(img_size[1]))
 
-            desc = desc.replace(f"[img:{img_path}]", "")
             TeachingTip.make(
                 target=target_widget,
                 view=ImageDescFlyoutView(desc, image_path=img_path, image_size=img_size),

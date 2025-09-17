@@ -217,3 +217,11 @@ def wrap_widget(widget, stretch=True):
     container.setAttribute(Qt.WA_TranslucentBackground)  # 启用透明背景支持
     container.setStyleSheet("background-color: transparent;")  # 关键：设置背景透明
     return container
+
+
+def generate_uuid():
+    # 生成一个随机 UUID
+    new_uuid = __import__('uuid').uuid4()
+
+    # 将 UUID 转换为字符串
+    return str(new_uuid)

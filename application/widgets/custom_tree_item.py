@@ -18,6 +18,7 @@ from PyQt5.QtWidgets import (
 from qfluentwidgets import SwitchButton, TransparentToolButton, FluentIcon, TeachingTip, TeachingTipTailPosition, \
     FlyoutViewBase, BodyLabel, InfoBarIcon
 
+from application.utils.utils import resource_path
 from application.widgets.image_desc_flyout import ImageDescFlyoutView
 from application.widgets.multi_select_combobox import FancyMultiSelectComboBox
 from application.widgets.tree_edit_command import TreeEditCommand
@@ -349,16 +350,17 @@ class ConfigurableTreeWidgetItem(QTreeWidgetItem):
             # 在说明中查找图片路径
             if re.search(r"\[img:(.*?)\]", self.desc):
                 img_path = re.search(r"\[img:(.*?)\]", self.desc).group(1)
+                desc = self.desc.replace(f"[img:{img_path}]", "")
+                if "resource_path" in img_path:
+                    img_path = img_path.replace("resource_path", resource_path("./"))
                 # 解析图像大小
                 img_size = (200, 200)
-                desc = self.desc
                 if re.search(r"\[img:(.*?)\]\((.*?)\)", self.desc):
                     img_size = re.search(r"\[img:(.*?)\]\((.*?)\)", self.desc).group(2)
                     img_size = re.search(r"(\d+)x(\d+)", img_size).group(1, 2)
                     desc = desc.replace(f"({img_size[0]}x{img_size[1]})", "")
                     img_size = (int(img_size[0]), int(img_size[1]))
 
-                desc = desc.replace(f"[img:{img_path}]", "")
                 tip = TeachingTip.make(
                     target=target_widget,
                     view=ImageDescFlyoutView(desc, image_path=img_path, image_size=img_size),
@@ -371,7 +373,7 @@ class ConfigurableTreeWidgetItem(QTreeWidgetItem):
                 tip = TeachingTip.create(
                     target=target_widget,
                     icon=InfoBarIcon.INFORMATION,
-                    title='使用说明',
+                    title='参数说明',
                     content=self.desc,
                     tailPosition=TeachingTipTailPosition.TOP,
                     duration=3000,  # 永不自动消失
