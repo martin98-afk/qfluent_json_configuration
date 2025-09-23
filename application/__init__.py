@@ -20,7 +20,7 @@ def enable_dpi_scale():
 
 def run_app():
     seed_everything()
-    os.environ["OMP_NUM_THREADS"] = "3"
+    # os.environ["OMP_NUM_THREADS"] = "3"
     enable_dpi_scale()
 
     app = QApplication(sys.argv)

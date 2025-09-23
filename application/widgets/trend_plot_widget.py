@@ -13,7 +13,7 @@ from application.dialogs.service_test_dialog import JSONServiceTester
 from application.widgets.persistent_tooltip import PersistentToolTip
 
 # 启用 OpenGL 硬件加速与抗锯齿
-pg.setConfigOptions(useOpenGL=True, antialias=True)
+# pg.setConfigOptions(useOpenGL=True, antialias=True)
 
 
 class PixelAlignedLinearRegionItem(pg.LinearRegionItem):

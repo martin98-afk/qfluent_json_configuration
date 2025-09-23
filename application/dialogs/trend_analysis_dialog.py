@@ -25,7 +25,7 @@ from PyQt5.QtWidgets import (
 )
 from loguru import logger
 from qfluentwidgets import FluentIcon as FIF, ComboBox, CommandBar, Action, TransparentTogglePushButton, \
-    TimePicker
+    TimePicker, SegmentedWidget
 from qfluentwidgets import SearchLineEdit, InfoBar, InfoBarPosition, Dialog, FastCalendarPicker, ToolButton
 
 from application.utils.threading_utils import Worker
@@ -71,6 +71,8 @@ class TrendAnalysisDialog(QDialog):
 
         self.point_type = None
         self.selected_points = []
+        # ========== 新增：初始化历史记录 ==========
+        self.history_points = []  # 存储所有历史选择过的测点
         self.cut_lines = []
         self.partitioning = False
         self.data_cache = {}  # 缓存数据，用于多种图表展示
@@ -245,6 +247,22 @@ class TrendAnalysisDialog(QDialog):
         # 搜索框和按钮优化
         search_h = QHBoxLayout()
         search_h.setSpacing(8)
+
+        self.segmented_widget = SegmentedWidget(self)
+        self.segmented_widget.setFixedHeight(36)  # 设置一个固定高度，使其更像导航栏
+
+        # 添加三个选项卡
+        self.segmented_widget.addItem("all_points", "所有测点", lambda: self._switch_to_tab("all_points"))
+        self.segmented_widget.addItem("model_points", "模型测点", lambda: self._switch_to_tab("model_points"))
+        self.segmented_widget.addItem("history_points", "历史选择", lambda: self._switch_to_tab("history_points"))
+
+        # 设置默认选中第一个选项卡（模型测点）
+        self.current_tab = "all_points"  # 新增：记录当前选中的标签
+        self.segmented_widget.setCurrentItem(self.current_tab)
+
+        # 将其添加到左侧布局，在搜索框之后，列表之前
+        left_layout.addWidget(self.segmented_widget)
+
         self.cmb_search_type = ComboBox(self)
         self.cmb_search_type.addItems(["本地搜索", "平台搜索"])
         self.cmb_search_type.setCurrentIndex(0)
@@ -555,6 +573,111 @@ class TrendAnalysisDialog(QDialog):
         self.timer.setSingleShot(True)
         self.timer.timeout.connect(self._adjust_layout)
 
+    def _switch_to_tab(self, tab_name: str):
+        """
+        切换到指定的导航栏标签页。
+        :param tab_name: 标签名 ("model_points", "all_points", "history_points")
+        """
+        self.current_tab = tab_name  # 记录当前选中的标签
+        self.segmented_widget.setCurrentItem(self.current_tab)
+        # ========== 新增：切换时显示加载状态 ==========
+        # 临时禁用表格交互
+        self.left_table.setEnabled(False)
+        self.left_table.setStyleSheet("QTableWidget { background-color: #f0f0f0; }")
+
+        # 使用 QTimer 延迟执行，给用户一个“正在加载”的感觉
+        QTimer.singleShot(50, lambda: self._execute_tab_switch(tab_name))
+
+    def _execute_tab_switch(self, tab_name: str):
+        """执行实际的标签页切换逻辑"""
+        if tab_name == "model_points":
+            self._show_model_points()
+        elif tab_name == "all_points":
+            self._show_all_points()
+        elif tab_name == "history_points":
+            self._show_history_points()
+
+        # ========== 新增：切换完成后恢复交互 ==========
+        self.left_table.setEnabled(True)
+        self.left_table.setStyleSheet(
+            """
+            QTableWidget {
+                gridline-color: #e9ecef;
+                selection-background-color: #e7f5ff;
+                selection-color: #212529;
+            }
+            QTableWidget::item {
+                padding: 5px;
+            }
+        """
+        )
+        # ========== 新增结束 ==========
+
+    def _show_model_points(self):
+        """显示所有模型的默认测点集合，并去重，保留描述信息最丰富的测点"""
+        # 1. 获取所有参数类型的默认测点名 (这是唯一权威来源)
+        all_default_names = set()
+        for param_type in self.param_types:  # 遍历所有参数类型
+            default_names_for_type = [
+                p.split("\n")[0] for p in self.parent.gather_tags(type=param_type)
+            ]
+            all_default_names.update(default_names_for_type)
+
+            # 2. 创建一个字典，用于为每个测点名存储其所有候选测点
+            candidate_points = {}
+            for tag_type, points in self.local_cache.items():
+                for point in points:
+                    point_name = point.get("测点名")
+                    if point_name in all_default_names:
+                        if point_name not in candidate_points:
+                            candidate_points[point_name] = []
+                        candidate_points[point_name].append((tag_type, point))
+
+            # 3. 对每个测点名，从候选列表中选择“描述信息最多”的那个测点
+            #    “描述信息最多”定义为：该测点字典中所有值的字符串总长度最长
+            model_points = []
+            for point_name, candidates in candidate_points.items():
+                if len(candidates) == 1:
+                    # 如果只有一个候选，直接添加
+                    model_points.append(candidates[0])
+                else:
+
+                    # 如果有多个候选，选择信息量最大的那个
+                    # 计算每个候选测点的信息量（所有值的字符串总长度）
+                    def calculate_info_density(candidate_point):
+                        _, point_dict = candidate_point
+                        total_length = 0
+                        for key, value in point_dict.items():
+                            # 跳过测点名本身，避免自引用
+                            if key != "测点名":
+                                total_length += len(str(value))
+                        return total_length
+
+                        # 找到信息量最大的候选测点
+
+                    best_candidate = max(candidates, key=calculate_info_density)
+                    model_points.append(best_candidate)
+
+        # 4. 更新 displayed_items 并刷新UI
+        self.displayed_items = model_points
+        self._refresh_left()
+
+    def _show_all_points(self):
+        """显示所有本地缓存的测点"""
+        # 将 local_cache 中所有测点扁平化为 displayed_items
+        all_items = [(t, p) for t, l in self.local_cache.items() for p in l]
+        # 更新 displayed_items 并刷新UI
+        self.displayed_items = all_items
+        self._refresh_left()
+
+    def _show_history_points(self):
+        """显示用户历史选择过的所有测点（按倒序排列）"""
+        # 从历史记录中加载，并按倒序排列
+        history_items = [("History", p) for p in reversed(self.history_points)]
+        # 更新 displayed_items 并刷新UI
+        self.displayed_items = history_items
+        self._refresh_left()
+
     def _toggle_time_panel(self, checked: bool):
         """
         切换时间选择面板的显示/隐藏状态。
@@ -567,14 +690,14 @@ class TrendAnalysisDialog(QDialog):
         """搜索模式切换时，清空搜索框并刷新为完整本地数据"""
         self.search_input.clear()  # 清空输入框
         # 重置为显示全部本地数据
-        self._reset_to_full_local()
+        self._switch_to_tab(self.current_tab)
 
     def _perform_search(self):
         """统一的搜索入口，根据当前模式决定搜索方式"""
         keyword = self.search_input.text().strip()
         if not keyword:
             # 无关键词时，重置为完整本地数据
-            self._reset_to_full_local()
+            self._switch_to_tab(self.current_tab)
             return
 
         if self.cmb_search_type.currentText() == "本地搜索":
@@ -631,16 +754,6 @@ class TrendAnalysisDialog(QDialog):
         # 过滤掉已选中的测点
         self.displayed_items = [pt for pt in all_items if pt[1] not in self.selected_points]
         self._refresh_left()
-
-    def _reset_to_full_local(self):
-        """重置为显示全部本地数据"""
-        # 根据当前参数类型过滤，或显示所有类型
-        filtered_data = {
-            tag_type: points
-            for tag_type, points in self.local_cache.items()
-            # if tag_type == self.point_type  # 如果需要按类型过滤，取消注释此行
-        }
-        self._update_displayed_items(filtered_data)
 
     def _get_start_end_time(self):
         start_date = self.start_dt.getDate().toPyDate()
@@ -705,8 +818,9 @@ class TrendAnalysisDialog(QDialog):
                 selected_points.append(pt[1].get("测点名"))
             else:
                 self.left_items.append(pt)
-        self._reset_to_full_local()
-        self._refresh_left()
+
+        # 初始化时，默认显示“模型测点”
+        self._switch_to_tab("all_points")
         self._refresh_selected()
         # 启动后台任务获取初始数据
         self._debounced_update_trends()
@@ -729,8 +843,9 @@ class TrendAnalysisDialog(QDialog):
                 self.local_cache[t] = l
         # 保存合并后的缓存
         save_point_cache(self.local_cache)
-        # 重新加载本地数据
-        self._reset_to_full_local()
+        # >>>> 修改：根据当前导航栏标签，刷新对应视图 <<<<
+        # 而是调用 _switch_to_tab 来刷新当前选中的视图
+        self._switch_to_tab(self.current_tab)
 
     def _refresh_left(self):
         """优化版：刷新左侧列表UI，避免全量重建，提高性能"""
@@ -835,6 +950,9 @@ class TrendAnalysisDialog(QDialog):
         # ========== 性能优化：增量更新 ==========
         # 1. 将找到的测点添加到已选列表
         self.selected_points.append(selected_point)
+        # 检查该测点是否已在历史记录中，避免重复
+        if selected_point not in self.history_points:
+            self.history_points.append(selected_point)
 
         # 2. 直接从 displayed_items 中移除该测点
         self.displayed_items = [pt for pt in self.displayed_items if pt[1].get("测点名") != name]
@@ -1115,6 +1233,31 @@ class TrendAnalysisDialog(QDialog):
 
     def _update_trends(self):
         """更新趋势图，显示选定的测点数据"""
+        # ========== 新增：智能时间更新逻辑 ==========
+        # 如果当前选择的是“快速时间范围”（非“自定义”），则将结束时间自动更新为现在
+        if self.range_combo.currentIndex() > 0:  # 索引0是“自定义”，大于0是快速选择
+            now = QDateTime.currentDateTime()
+            self.end_dt.setDate(now.date())
+            self.end_time_edit.setTime(now.time())
+
+            # 根据当前选择的快速范围，重新计算开始时间
+            index = self.range_combo.currentIndex()
+            if index == 1:  # 最近1小时
+                start_time = now.addSecs(-3600)
+            elif index == 2:  # 最近12小时
+                start_time = now.addSecs(-3600 * 12)
+            elif index == 3:  # 最近24小时
+                start_time = now.addSecs(-3600 * 24)
+            elif index == 4:  # 最近3天
+                start_time = now.addDays(-3)
+            elif index == 5:  # 最近7天
+                start_time = now.addDays(-7)
+
+            # 更新开始时间
+            self.start_dt.setDate(start_time.date())
+            self.start_time_edit.setTime(start_time.time())
+        # ========== 新增结束 ==========
+
         # 清除当前图表区域
         self._clear_plot_area()
         if not self.selected_points:

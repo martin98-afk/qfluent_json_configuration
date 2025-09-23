@@ -143,8 +143,6 @@ param-structure:
       自定义切分范围:
         type: partition
         default: ''
-  烟雾反馈存储id:
-    type: uuid
   工况划分策略:
     type: dropdown
     default: 距离匹配
