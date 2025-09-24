@@ -19,6 +19,7 @@ HISTORY_PATH = os.path.expanduser(os.path.join(PATH_PREFIX, "历史版本记录.
 def path_exists(path):
     return os.path.exists(os.path.join(PATH_PREFIX, path))
 
+
 @error_catcher_decorator
 def load_config(file_path):
     with open(file_path, 'r', encoding='utf-8') as file:
@@ -32,6 +33,7 @@ def load_config(file_path):
             return {section: dict(config[section]) for section in config.sections()}
         else:
             raise ValueError(f"Unsupported file format: {file_path}")
+
 
 @error_catcher_decorator
 def save_config(file_path, data):
@@ -51,6 +53,7 @@ def save_config(file_path, data):
             config.write(file)
         else:
             raise ValueError(f"Unsupported file format: {file_path}")
+
 
 def load_history():
     history = defaultdict(list)
