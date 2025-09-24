@@ -10,8 +10,8 @@ from PyQt5.QtWidgets import (
 )
 from qfluentwidgets import FastCalendarPicker, CompactDoubleSpinBox, ComboBox
 
-from application.dialogs.range_input_dialog import RangeInputDialog
-from application.dialogs.range_list_dialog import RangeListDialog
+from application.interfaces.range_input_dialog import RangeInputDialog
+from application.interfaces.range_list_dialog import RangeListDialog
 from application.tools.algorithm.calc_normal_range import CalcNormalRange
 from application.tools.algorithm.jenks_breakpoint import JenksBreakpoint
 from application.utils.threading_utils import Worker

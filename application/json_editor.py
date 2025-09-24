@@ -31,14 +31,14 @@ from qfluentwidgets import FluentIcon as FIF, CommandBar, TabBar, SearchLineEdit
     InfoBarIcon, PushButton, TeachingTip, TeachingTipTailPosition
 from qfluentwidgets import RoundMenu, Action
 
-from application.dialogs.histogram_range_set_dialog import IntervalPartitionDialog
-from application.dialogs.load_history_dialog import LoadHistoryDialog
-from application.dialogs.point_selector_dialog import PointSelectorDialog
-from application.dialogs.range_input_dialog import RangeInputDialog
-from application.dialogs.range_list_dialog import RangeListDialog
-from application.dialogs.time_range_dialog import TimeRangeDialog
-from application.dialogs.time_selector_dialog import TimeSelectorDialog
-from application.dialogs.version_diff_dialog import VersionDiffDialog
+from application.interfaces.histogram_range_set_dialog import IntervalPartitionDialog
+from application.interfaces.load_history_dialog import LoadHistoryDialog
+from application.interfaces.point_selector_dialog import PointSelectorDialog
+from application.interfaces.range_input_dialog import RangeInputDialog
+from application.interfaces.range_list_dialog import RangeListDialog
+from application.interfaces.time_range_dialog import TimeRangeDialog
+from application.interfaces.time_selector_dialog import TimeSelectorDialog
+from application.interfaces.version_diff_dialog import VersionDiffDialog
 from application.utils.config_handler import (
     load_config,
     save_history,
@@ -110,12 +110,14 @@ class JSONEditor(QWidget):
         # 配置参数加载
         self.load_config()
 
-    def load_config(self, config_path="default.yaml"):
+    def load_config(self, config_path="default.yaml", callback_func=None):
         if hasattr(self, "config"):
             del self.config
 
         self.config = ParamConfigLoader(config_path)
         self.config.params_loaded.connect(self.on_config_loaded)
+        if callback_func:
+            self.config.params_loaded.connect(lambda: callback_func(config_path))
         if self.current_file in self.model_bindings:
             # 数据库工具加载完后自动将配置与模型进行关联
             self.config.database_tools_loaded.connect(
@@ -1239,10 +1241,8 @@ class JSONEditor(QWidget):
             self.home.switchTo(self)
             restore_background()
             # —— 其他类型分支 —— #
-        elif param_type in ["slider", "checkbox", "text", "dropdown", "multiselect_dropdown", "upload"]:
-            pass  # 一直在界面显示
         else:
-            raise ValueError(f"未知参数类型：{param_type}")
+            pass  # 一直在界面显示
 
         self.tree.updateGeometries()  # 强制更新布局信息
         self.tree.viewport().update()
@@ -1379,6 +1379,7 @@ class JSONEditor(QWidget):
 
     @error_catcher_decorator
     def on_tree_context_menu(self, pos: QPoint):
+        current_pos = QCursor.pos()
         # 获取当前项
         item = self.tree.itemAt(pos)
         full_path = self.get_path_by_item(item)
@@ -1417,7 +1418,7 @@ class JSONEditor(QWidget):
                 Action(
                     FIF.INFO, "参数说明",
                     triggered=lambda: self.showTeachingTip(
-                        item, full_path.split("/")[-1], self.config.params_desc.get(full_path), duration=-1
+                        item, full_path.split("/")[-1], self.config.params_desc.get(full_path), duration=-1, pos=current_pos
                     )
                 )
             )
@@ -1695,6 +1696,9 @@ class JSONEditor(QWidget):
             # uuid 参数自动生成
             if param_type == "uuid" and value == "":
                 value = generate_uuid()
+            if (param_type == "platform_url" and
+                    value != f"{self.config.protocol_type}://{self.config.global_host}:{self.config.platform_port}"):
+                value = f"{self.config.protocol_type}://{self.config.global_host}:{self.config.platform_port}"
 
             if isinstance(value, list):
                 item = ConfigurableTreeWidgetItem(key, list2str(value), editor=self, required=required, desc=desc)
@@ -1854,14 +1858,17 @@ class JSONEditor(QWidget):
             with_flow_json=True,
             with_flow_pic=True
         )[0]
-        self.config.api_tools.get("model_execute").call(
+        worker = Worker(
+            self.config.api_tools.get("model_execute").call,
             flow_no,
             flow_json,
             flow_pic,
             param_no,
             run_type
         )
-        self.create_successbar("开始运行模型！")
+        self.threadpool.start(worker)
+        worker.signals.finished.connect(self.create_successbar)
+        worker.signals.error.connect(self.create_errorbar)
 
     def show_component_logs(self):
         item = self.tree.currentItem()
@@ -2140,7 +2147,7 @@ class JSONEditor(QWidget):
                     self.config.api_tools.get("model_upload"),
                     file_path, selected_env
                 )
-                worker.signals.finished.connect(lambda: self.create_successbar(f"{file_path} 上传成功！"))
+                worker.signals.finished.connect(self.create_successbar)
                 worker.signals.error.connect(self.create_errorbar)
                 self.thread_pool.start(worker)
 
@@ -2154,7 +2161,7 @@ class JSONEditor(QWidget):
                     self.config.api_tools.get("model_upload"),
                     os.path.join(resource_path("./"), "预制模型", model_path), selected_env
                 )
-                worker.signals.finished.connect(lambda: self.create_successbar(f"{model_path} 上传成功！"))
+                worker.signals.finished.connect(self.create_successbar)
                 worker.signals.error.connect(self.create_errorbar)
                 self.thread_pool.start(worker)
 
@@ -2296,13 +2303,13 @@ class JSONEditor(QWidget):
 
         bar.show()
 
-    def showTeachingTip(self, item: ConfigurableTreeWidgetItem, name: str, desc: str, duration: int):
+    def showTeachingTip(self, item: ConfigurableTreeWidgetItem, name: str, desc: str, duration: int, pos: QPoint = None):
         """展示参数说明"""
         target_widget = item.get_target_widget()
         if target_widget is None:
             target_widget = QLabel(self)
             target_widget.resize(1, 1)
-            global_pos = QCursor.pos()
+            global_pos = QCursor.pos() if pos is None else pos
             local_pos = self.mapFromGlobal(global_pos)
             target_widget.move(local_pos)
             target_widget.setAttribute(Qt.WA_TransparentForMouseEvents)  # 不拦截鼠标
@@ -2333,7 +2340,7 @@ class JSONEditor(QWidget):
             TeachingTip.create(
                 target=target_widget,
                 icon=InfoBarIcon.INFORMATION,
-                title='参数说明',
+                title=f"{name} 参数说明",
                 content=desc,
                 tailPosition=TeachingTipTailPosition.TOP,
                 duration=duration,  # 永不自动消失

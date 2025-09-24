@@ -88,12 +88,15 @@ class ParamConfigLoader(QObject):
                 port = prefix.split("//")[1].split(":")[1]
                 api_key = cfg["api-tools"].get("api-key")
                 nacos_cfg = cfg.get("api-tools", {}).get("nacos")
+                protocol = "http"
             else:
                 # 新版配置
                 nacos_cfg = cfg.get("api-tools", {}).get("nacos")
                 host = cfg.get("api-tools", {}).get("全局服务地址")
                 port = cfg.get("api-tools", {}).get("平台端口")
-                api_key = cfg.get("api-tools", {}).get("api-key")
+                api_key = cfg.get("api-tools", {}).get("平台鉴权码") if "平台鉴权码" in cfg.get("api-tools", {}) \
+                    else cfg.get("api-tools", {}).get("api-key")
+                protocol = cfg.get("api-tools", {}).get("接口协议类型")
 
             default_path = Path(resource_path("default.yaml"))
 
@@ -101,11 +104,21 @@ class ParamConfigLoader(QObject):
                 new_cfg = yaml.load(f)
 
             if nacos_cfg is not None:
-                new_cfg["api-tools"]["nacos"] = nacos_cfg
+                new_cfg["api-tools"]["nacos端口"] = nacos_cfg.get("port")
+                new_cfg["api-tools"]["nacos用户名"] = nacos_cfg.get("username")
+                new_cfg["api-tools"]["nacos密码"] = nacos_cfg.get("password")
+                new_cfg["api-tools"]["nacos命名空间"] = nacos_cfg.get("namespace")
+            else:
+                new_cfg["api-tools"]["nacos端口"] = cfg.get("api-tools", {}).get("nacos端口")
+                new_cfg["api-tools"]["nacos用户名"] = cfg.get("api-tools", {}).get("nacos用户名")
+                new_cfg["api-tools"]["nacos密码"] = cfg.get("api-tools", {}).get("nacos密码")
+                new_cfg["api-tools"]["nacos命名空间"] = cfg.get("api-tools", {}).get("nacos命名空间")
+
             # 更新默认配置中的对应内容
+            new_cfg["api-tools"]["接口协议类型"] = protocol
             new_cfg["api-tools"]["全局服务地址"] = host
             new_cfg["api-tools"]["平台端口"] = port
-            new_cfg["api-tools"]["api-key"] = api_key
+            new_cfg["api-tools"]["平台鉴权码"] = api_key
             cfg["api-tools"] = new_cfg["api-tools"]
 
             with config_path.open("w", encoding="utf-8") as f:
@@ -134,29 +147,37 @@ class ParamConfigLoader(QObject):
         """异步加载全部配置"""
         cfg = self._read_config()
         cfg = cfg.get("api-tools", cfg.get("api-search", {}))
-        if "全局服务地址" not in cfg:
+        if "全局服务地址" not in cfg or "nacos" in cfg:
             self.restore_default_params()
 
         self.global_host = cfg.pop("全局服务地址", "")
         self.platform_port = cfg.pop("平台端口", "")
-        self.global_api_key = cfg.pop("api-key", "")
-        if "nacos" in cfg:
-            # 导入nacos工具
-            type_cfg = {"nacos": cfg["nacos"], "接口协议类型": cfg.get("接口协议类型", "http")}
-            logger.info(f"Launching asynchronous nacos tools load!")
-            worker = Worker(self._load_tools_parallel, type_cfg)
-            worker.signals.finished.connect(
-                lambda _: (
-                    logger.info(f"nacos Tools async load finished"),
-                    self.database_tools_loaded.emit(),
-                )
+        self.global_api_key = cfg.pop("平台鉴权码", "")
+
+        # 导入nacos工具
+        type_cfg = {
+            "nacos": {
+                "host": self.global_host if cfg.get("nacos地址(不填时使用全局地址)") == "" else cfg.get("nacos地址(不填时使用全局地址)"),
+                "port": cfg.get("nacos端口"),
+                "username": cfg.get("nacos用户名"),
+                "password": cfg.get("nacos密码"),
+                "namespace": cfg.get("nacos命名空间"),
+                "postgres-host": self.global_host if cfg.get("postgres地址(不填时使用全局地址)") == "" else cfg.get("postgres地址(不填时使用全局地址)")
+            },
+            "接口协议类型": cfg.get("接口协议类型", "http")
+        }
+        logger.info(f"Launching asynchronous nacos tools load!")
+        worker = Worker(self._load_tools_parallel, type_cfg)
+        worker.signals.finished.connect(
+            lambda _: (
+                logger.info(f"nacos Tools async load finished"),
+                self.database_tools_loaded.emit(),
             )
-            worker.signals.error.connect(
-                lambda err: logger.error(f"Async full load nacos tools error: {err}")
-            )
-            self.threadpool.start(worker)
-        else:
-            self.database_tools_loaded.emit()
+        )
+        worker.signals.error.connect(
+            lambda err: logger.error(f"Async full load nacos tools error: {err}")
+        )
+        self.threadpool.start(worker)
 
         if "api" in cfg:
             # 导入接口工具
@@ -199,7 +220,7 @@ class ParamConfigLoader(QObject):
         # 优先加载postgres工具
         logger.debug("Parallel tool load started for tools: {}", list(cfg.keys()))
         tool_list = {}
-        protocol_type = cfg.get("接口协议类型", "http")
+        self.protocol_type = cfg.get("接口协议类型", "http")
         # 增加连接postgres数据库的工具
         if "nacos" in cfg:
             nacos_cfg = cfg.pop("nacos", {})
@@ -214,6 +235,7 @@ class ParamConfigLoader(QObject):
                 tool_list["write_service_path"] = WriteNacosServicePath(**nacos_cfg)
             except:
                 logger.error("Failed to load eeoptimize nacos config")
+
             tool_list["get_postgres_config"] = GetPostgresConfig(**nacos_cfg)
             postgres_cfg = tool_list["get_postgres_config"].call()
             # 如果postgres中host配置不是真实的地址，则检测是否有postgres单独配置的地址，否则使用全局host
@@ -229,7 +251,7 @@ class ParamConfigLoader(QObject):
             cfg = cfg.get("api", cfg)
 
         def create_searcher(tool_name, cfg_tool):
-            prefix = cfg_tool.pop("prefix", f"{protocol_type}://{self.global_host}:{self.platform_port}")
+            prefix = cfg_tool.pop("prefix", f"{self.protocol_type}://{self.global_host}:{self.platform_port}")
             api_key = cfg_tool.pop("api-key", self.global_api_key)
             tool_type = cfg_tool.get("type")
             if tool_type == "point-search":

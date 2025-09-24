@@ -135,9 +135,11 @@ class ConfigSettingDialog(QDialog):
                 ori_name, tab_name,
                 onClick=lambda _, key=ori_name: self.show_subtree(key)
             )
-
-        self.pivot.setCurrentItem(list(self.parent.config.tab_names.keys())[0])
-        self.show_subtree(list(self.parent.config.tab_names.keys())[0])
+        try:
+            self.pivot.setCurrentItem(list(self.parent.config.tab_names.keys())[0])
+            self.show_subtree(list(self.parent.config.tab_names.keys())[0])
+        except IndexError:
+            pass
 
     def switch_to(self, route_key: str, item_name=None):
         self.pivot.setCurrentItem(route_key)
@@ -236,29 +238,26 @@ class ConfigSettingDialog(QDialog):
 
         return None
 
+
     def restore_config(self):
-        self.config_combo.setCurrentText(0)
+        self.config_combo.setCurrentIndex(0)
         self.parent.config.restore_default_params()
-        self.parent.config.params_loaded.connect(self.on_config_loaded)
-        self.parent.config.load_async()
+        self.parent.load_config("default.yaml", self.callback_func)
 
 
-    def on_config_loaded(self):
-        with open(self.parent.config.param_definitions_path, 'r', encoding='utf-8') as f:
+    def callback_func(self, path):
+        with open(path, 'r', encoding='utf-8') as f:
             data = yaml.load(f) or {}
         self.tree.clear()
         self.build_tree(data)
-        self.create_top_buttons()  # Update buttons after restore
+        self.create_top_buttons()
+
 
     def import_config(self):
         path, _ = QFileDialog.getOpenFileName(self, "导入配置文件", "", "YAML 文件 (*.yaml *.yml);;所有文件 (*)")
         if path:
             try:
-                with open(path, 'r', encoding='utf-8') as f:
-                    data = yaml.load(f) or {}
-                self.tree.clear()
-                self.build_tree(data)
-                self.parent.load_config(path)
+                self.parent.load_config(path, self.callback_func)
                 QMessageBox.information(self, "导入成功", f"成功导入配置文件：{os.path.basename(path)}")
                 # ✅ 导入后也刷新配置列表，确保下次能选中它
                 self.load_config_list()
@@ -268,7 +267,6 @@ class ConfigSettingDialog(QDialog):
 
             except Exception as e:
                 QMessageBox.critical(self, "导入失败", f"导入配置失败：{e}")
-        self.create_top_buttons()  # Update buttons after restore
 
     def toggle_expand_collapse(self, item, col):
         item.setExpanded(not item.isExpanded())
@@ -498,23 +496,12 @@ class ConfigSettingDialog(QDialog):
         # 询问是否保存当前更改（可选）
         # 这里简化：直接加载
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                data = yaml.load(f) or {}
-
-            # 更新 parent 的配置路径
-            self.parent.config.param_definitions_path = file_path
-
-            # 清空并重建树
-            self.tree.clear()
-            self.build_tree(data)
-            self.create_top_buttons()
-
             # 更新 ComboBox 当前项（确保同步）
             self.config_combo.setCurrentText(filename)
 
             # 可选：通知主界面刷新
             if hasattr(self.parent, 'load_config'):
-                self.parent.load_config(file_path)
+                self.parent.load_config(file_path, self.callback_func)
 
         except Exception as e:
             import traceback

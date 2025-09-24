@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import QGraphicsItem
 from loguru import logger
 from qfluentwidgets import CommandBarView, Action, FluentIcon, Flyout, FlyoutAnimationType
 
-from application.dialogs.service_test_dialog import JSONServiceTester
+from application.interfaces.service_test_dialog import JSONServiceTester
 from application.widgets.persistent_tooltip import PersistentToolTip
 
 # 启用 OpenGL 硬件加速与抗锯齿

@@ -24,7 +24,7 @@ from PyQt5.QtWidgets import (
     QMessageBox, )
 from qfluentwidgets import FastCalendarPicker, CompactTimeEdit
 
-from application.dialogs.time_selector_dialog import TimeSelectorDialog
+from application.interfaces.time_selector_dialog import TimeSelectorDialog
 from application.tools.algorithm.train_data_select import TrainDataSelect
 from application.utils.data_format_transform import list2str
 from application.utils.threading_utils import Worker

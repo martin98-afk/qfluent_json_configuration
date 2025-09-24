@@ -102,7 +102,7 @@ class ModelUploader(BaseTool):
             self,
             file_path: str,
             env_id: str = None
-    ) -> None:
+    ) -> str:
         """
         上传文件/文件夹，自动压缩ZIP后上传，返回 {'filePath': ..., 'fileName': ...} 或 None
         """
@@ -135,6 +135,8 @@ class ModelUploader(BaseTool):
 
             # 关联模型运行环境
             self._link_new_model_env(model_id, env_id)
+            file_name = os.path.basename(file_path).split('.')[0]
+            return f"{file_name}模型 上传成功！"
         except httpx.RequestError as exc:
             raise Exception(f"上传请求错误：{exc}")
         except httpx.HTTPStatusError as exc:

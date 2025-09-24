@@ -1,15 +1,16 @@
 title: 能耗优化参数配置工具
 api-tools:
+  接口协议类型: http
   全局服务地址: 172.16.134.122
   平台端口: '8900'
-  接口协议类型: http
-  api-key: 
-    eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImtpZCI6IjAwMiJ9.eyJ0ZW5hbnROYW0iOiLnp5_miLfnrqHnkIblhazlj7giLCJvcmdOYW1lIjoi5piG6ZKiIiwiaXNzIjoiU1lTIiwidXNyUm9sZSI6IkdHU0NHTCIsInNlbGVjdGVkT3JnIjoiMTg1ODc4MTAxMjU1MzYyOTY5NiIsImFkbWluRmxnIjoiMSIsIm9yZ0lkIjoiMTg1ODc5NjUzODkxNDkzMDY4OCIsInVzck5hbSI6Iuezu-e7n-euoeeQhuWRmCIsInRlbmFudE5vIjoiMSIsIndlYlNvY2tldElwIjoiZGVmYXVsdCIsImlhdCI6MTc0OTc5NDIwMSwia2F0IjoxNzQ5Nzc0NDUwODM5fQ.rM7KBJ_UrLfriScotpdMNUspcR0xonyFM-d2NnWHLiw
-  nacos:
-    port: '8849'
-    username: nacos
-    password: Luculent@2023!
-    namespace: test-nhyh
+  平台鉴权码: 
+    eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImtpZCI6IjAwMiJ9.eyJ0ZW5hbnROYW0iOiLnp5_miLfnrqHnkIblhazlj7giLCJvcmdOYW1lIjoi5piG6ZKiIiwiaXNzIjoiU1lTIiwidXNyUm9sZSI6IkdHU0NHTCIsInNlbGVjdGVkT3JnIjoiMTg1ODc4MTAxMjU1MzYyOTY5NiIsImFkbWluRmxnIjoiMSIsIm9yZ0lkIjoiMTg1ODc5NjUzODkxNDkzMDY4OCIsInVzck5hbSI6Iuezu-e7n-euoeeQhuWRmCIsInRlbmFudE5vIjoiMSIsIndlYlNvY2tldElwIjoiZGVmYXVsdCIsImlhdCI6MTc1ODcwMDY5OCwia2F0IjoxNzU4NjkzNjI2NjczfQ.a9ixomRKYR9x6INzZxuyVivw4KwjjIgxmwiZ7vQ1UX0
+  nacos地址(不填时使用全局地址): ''
+  nacos端口: '8849'
+  nacos用户名: nacos
+  nacos密码: Luculent@2023!
+  nacos命名空间: test-nhyh
+  postgres地址(不填时使用全局地址): ''
   api:
     file_upload:
       type: file-upload
@@ -99,7 +100,7 @@ param-structure:
         - '-5'
         - '5'
         - '1'
-        describe: 对下控时该控制参数的输出值进行微调，直接在结果上加上该偏移量
+        describe: 对下控时该控制参数的输出值进行微调，直接在结果上加上该偏移量。
   目标参数:
     type: subgroup
     subchildren:
@@ -143,6 +144,25 @@ param-structure:
       自定义切分范围:
         type: partition
         default: ''
+  烟雾反馈参数:
+    type: subgroup
+    subchildren:
+      测点名:
+        type: fetch
+        options:
+        - point_search
+      超限统计阈值:
+        type: slider
+        default: '30'
+        options:
+        - '0'
+        - '100'
+        - '0'
+        describe: 控制烟雾超限次数统计时的判断阈值
+    describe: 烟雾反馈统计参数，需配置烟雾识别反写测点，在模型预测时会统计配置参数超过超限阈值的次数。
+  烟雾反馈存储id:
+    type: uuid
+    describe: 设置模型推理时烟雾超限统计次数存储id
   工况划分策略:
     type: dropdown
     default: 距离匹配
@@ -257,7 +277,7 @@ param-structure:
         type: text
         default: smoke
       平台地址:
-        type: text
+        type: platform_url
       运行设备:
         type: dropdown
         default: cpu
@@ -303,6 +323,8 @@ param-template:
     - - 测点获取接口
   uuid:
     name: 通用唯一识别码
+  platform_url:
+    name: 平台地址
   range:
     name: 范围选择
     params:
