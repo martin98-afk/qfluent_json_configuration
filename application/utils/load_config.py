@@ -108,11 +108,13 @@ class ParamConfigLoader(QObject):
                 new_cfg["api-tools"]["nacos用户名"] = nacos_cfg.get("username")
                 new_cfg["api-tools"]["nacos密码"] = nacos_cfg.get("password")
                 new_cfg["api-tools"]["nacos命名空间"] = nacos_cfg.get("namespace")
+                new_cfg["api-tools"]["postgres地址(不填时使用全局地址)"] = nacos_cfg.get("postgres-host")
             else:
                 new_cfg["api-tools"]["nacos端口"] = cfg.get("api-tools", {}).get("nacos端口")
                 new_cfg["api-tools"]["nacos用户名"] = cfg.get("api-tools", {}).get("nacos用户名")
                 new_cfg["api-tools"]["nacos密码"] = cfg.get("api-tools", {}).get("nacos密码")
                 new_cfg["api-tools"]["nacos命名空间"] = cfg.get("api-tools", {}).get("nacos命名空间")
+                new_cfg["api-tools"]["postgres地址(不填时使用全局地址)"] = cfg.get("api-tools", {}).get("postgres地址(不填时使用全局地址)")
 
             # 更新默认配置中的对应内容
             new_cfg["api-tools"]["接口协议类型"] = protocol

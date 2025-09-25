@@ -2,26 +2,14 @@ import time
 from datetime import datetime
 
 from PyQt5.QtCore import Qt, QTimer, QThreadPool
-from PyQt5.QtGui import QFont, QColor
-from PyQt5.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QTableWidget,
-    QTableWidgetItem,
-    QHeaderView,
-    QLabel,
-    QHBoxLayout,
-    QSizePolicy
-)
+from PyQt5.QtGui import QColor, QFont
+from PyQt5.QtWidgets import (QTableWidget, QTableWidgetItem, QHeaderView,
+                             QVBoxLayout, QHBoxLayout, QWidget,
+                             QSizePolicy, QLabel)
 from loguru import logger
-from qfluentwidgets import FluentIcon as FIF, ComboBox, TogglePushButton
-from qfluentwidgets import (
-    SwitchButton,
-    TableWidget,
-    InfoBar,
-    InfoBarPosition,
-    PushButton
-)
+from qfluentwidgets import (FluentIcon as FIF,
+                            PushButton,
+                            InfoBar, InfoBarPosition, TogglePushButton, SwitchButton, ComboBox, TableWidget)
 
 from application.tools.api_service.servicves_test import ServicesTest
 from application.utils.threading_utils import Worker
@@ -35,7 +23,9 @@ class ServiceStatusMonitor(QWidget):
         '失败': '#f44747',
         '未监控': '#808080',
         '检查中...': '#ffcb6b',
-        '重启中...': '#dcdcaa'
+        '重启中...': '#dcdcaa',
+        '重启失败': '#f44747',
+        '重启成功': '#32CD32'
     }
 
     def __init__(self, editor, parent=None):
@@ -515,20 +505,6 @@ class ServiceStatusMonitor(QWidget):
             'record_btn': record_btn  # 保存按钮引用
         }
 
-    def on_interval_changed(self, index):
-        """监控间隔下拉框变化处理"""
-        combo = self.sender()
-        sid = combo.property("service_id")
-
-        if sid in self.monitoring_services:
-            # 从"5秒"、"10秒"等文本中提取数字
-            text = combo.currentText()
-            interval = int(text.replace("秒", ""))
-            self.monitoring_services[sid]['interval'] = interval
-
-            # 重新计算定时器间隔
-            self.update_monitoring_timer_interval()
-
     def update_monitoring_timer_interval(self):
         """更新监控定时器的间隔"""
         # 找出所有正在监控的服务中最小的间隔
@@ -656,19 +632,62 @@ class ServiceStatusMonitor(QWidget):
         # 滚动到最新记录
         self.record_table.scrollToTop()
 
+    def on_interval_changed(self, index):
+        """监控间隔下拉框变化处理"""
+        combo = self.sender()
+        sid = combo.property("service_id")
+        if sid in self.monitoring_services:
+            # 从"5秒"、"10秒"等文本中提取数字
+            text = combo.currentText()
+            interval = int(text.replace("秒", ""))
+
+            # 获取当前选中的所有行
+            selected_rows = self.monitoring_table.selectionModel().selectedRows()
+
+            # 如果没有多选，只处理当前行
+            if len(selected_rows) <= 1:
+                self.monitoring_services[sid]['interval'] = interval
+            else:
+                # 如果多选了，同步设置所有选中行的间隔
+                for index in selected_rows:
+                    row = index.row()
+                    interval_combo = self.monitoring_table.cellWidget(row, 3)
+                    if interval_combo and interval_combo.property("service_id") in self.monitoring_services:
+                        other_sid = interval_combo.property("service_id")
+                        other_info = self.monitoring_services[other_sid]
+                        other_info['interval'] = interval
+                        # 同步更新UI状态
+                        interval_combo.setCurrentIndex(combo.currentIndex())
+
+            # 重新计算定时器间隔
+            self.update_monitoring_timer_interval()
+
     def on_max_restart_changed(self, index):
         """最大重启次数下拉框变化处理"""
         combo = self.sender()
         sid = combo.property("service_id")
-
         if sid in self.monitoring_services:
             # 从"1次"、"2次"等文本中提取数字
             text = combo.currentText()
             max_restart = int(text.replace("次", ""))
-            self.monitoring_services[sid]['max_restart'] = max_restart
 
-            # 显示配置信息
-            service_name = self.monitoring_services[sid]['service_name']
+            # 获取当前选中的所有行
+            selected_rows = self.monitoring_table.selectionModel().selectedRows()
+
+            # 如果没有多选，只处理当前行
+            if len(selected_rows) <= 1:
+                self.monitoring_services[sid]['max_restart'] = max_restart
+            else:
+                # 如果多选了，同步设置所有选中行的最大重启次数
+                for index in selected_rows:
+                    row = index.row()
+                    max_restart_combo = self.monitoring_table.cellWidget(row, 5)
+                    if max_restart_combo and max_restart_combo.property("service_id") in self.monitoring_services:
+                        other_sid = max_restart_combo.property("service_id")
+                        other_info = self.monitoring_services[other_sid]
+                        other_info['max_restart'] = max_restart
+                        # 同步更新UI状态
+                        max_restart_combo.setCurrentIndex(combo.currentIndex())
 
     def on_manual_restart(self):
         """手动重启服务"""
@@ -718,8 +737,8 @@ class ServiceStatusMonitor(QWidget):
             # 重启后状态暂时设为检查中
             if 'status_label' in info and info['status_label']:
                 try:
-                    info['status_label'].setText("检查中...")
-                    info['status_label'].setStyleSheet(f"color: {self.STATUS_COLORS['检查中...']};")
+                    info['status_label'].setText("重启成功")
+                    info['status_label'].setStyleSheet(f"color: {self.STATUS_COLORS['重启成功']};")
                 except RuntimeError:
                     pass
 
@@ -739,8 +758,8 @@ class ServiceStatusMonitor(QWidget):
             # 重启失败后状态仍为失败
             if 'status_label' in info and info['status_label']:
                 try:
-                    info['status_label'].setText("失败")
-                    info['status_label'].setStyleSheet(f"color: {self.STATUS_COLORS['失败']};")
+                    info['status_label'].setText("重启失败")
+                    info['status_label'].setStyleSheet(f"color: {self.STATUS_COLORS['重启失败']};")
                 except RuntimeError:
                     pass
 
@@ -748,36 +767,60 @@ class ServiceStatusMonitor(QWidget):
         """状态监控开关变化处理"""
         btn = self.sender()
         sid = btn.property("service_id")
-
         if sid not in self.monitoring_services:
             return
-
         info = self.monitoring_services[sid]
-        info['monitoring'] = checked
+
+        # 获取当前选中的所有行
+        selected_rows = self.monitoring_table.selectionModel().selectedRows()
+
+        # 如果没有多选，只处理当前行
+        if len(selected_rows) <= 1:
+            info['monitoring'] = checked
+        else:
+            # 如果多选了，同步设置所有选中行的状态
+            for index in selected_rows:
+                row = index.row()
+                monitor_switch = self.monitoring_table.cellWidget(row, 1)
+                if monitor_switch and monitor_switch.property("service_id") in self.monitoring_services:
+                    other_sid = monitor_switch.property("service_id")
+                    other_info = self.monitoring_services[other_sid]
+                    other_info['monitoring'] = checked
+                    # 同步更新UI状态
+                    monitor_switch.setChecked(checked)
+                    # 更新状态显示
+                    if 'status_label' in other_info and other_info['status_label']:
+                        try:
+                            if checked:
+                                # 不要立即设置为"检查中..."，而是保留之前的状态
+                                pass
+                            else:
+                                other_info['status'] = "未监控"
+                                other_info['status_label'].setText("未监控")
+                                other_info['status_label'].setStyleSheet(f"color: {self.STATUS_COLORS['未监控']};")
+                        except RuntimeError:
+                            pass
+            # 由于多选操作，当前行的状态已经在上面同步更新了，无需再次设置
+            info = self.monitoring_services[sid]
 
         # 只有在用户手动操作时才记录，加载服务时不记录
         if not self.loading_services:
             # 记录监控状态变化
             operation = "开启监控" if checked else "关闭监控"
-            self.add_monitoring_record(
-                service_name=info['service_name'],
-                status="监控状态变更",
-                operation=operation
-            )
-
-        # 更新状态显示
-        if 'status_label' in info and info['status_label']:
-            try:
-                if checked:
-                    # 不要立即设置为"检查中..."，而是保留之前的状态
-                    # 只有在开始检查时才更新为"检查中..."
-                    pass
-                else:
-                    info['status'] = "未监控"
-                    info['status_label'].setText("未监控")
-                    info['status_label'].setStyleSheet(f"color: {self.STATUS_COLORS['未监控']};")
-            except RuntimeError:
-                pass
+            # 如果是多选，记录为批量操作
+            if len(selected_rows) > 1:
+                operation = f"批量{operation} ({len(selected_rows)}个服务)"
+                self.add_monitoring_record(
+                    service_name=f"批量操作",
+                    status="批量操作",
+                    operation=operation
+                )
+            else:
+                self.add_monitoring_record(
+                    service_name=info['service_name'],
+                    status="监控状态变更",
+                    operation=operation
+                )
 
         # 更新定时器
         self.update_monitoring_timer_interval()
@@ -786,20 +829,45 @@ class ServiceStatusMonitor(QWidget):
         """自动重启开关变化处理"""
         btn = self.sender()
         sid = btn.property("service_id")
-
         if sid in self.monitoring_services:
             info = self.monitoring_services[sid]
-            info['auto_restart'] = checked
+
+            # 获取当前选中的所有行
+            selected_rows = self.monitoring_table.selectionModel().selectedRows()
+
+            # 如果没有多选，只处理当前行
+            if len(selected_rows) <= 1:
+                info['auto_restart'] = checked
+            else:
+                # 如果多选了，同步设置所有选中行的状态
+                for index in selected_rows:
+                    row = index.row()
+                    restart_switch = self.monitoring_table.cellWidget(row, 4)
+                    if restart_switch and restart_switch.property("service_id") in self.monitoring_services:
+                        other_sid = restart_switch.property("service_id")
+                        other_info = self.monitoring_services[other_sid]
+                        other_info['auto_restart'] = checked
+                        # 同步更新UI状态
+                        restart_switch.setChecked(checked)
 
             # 只有在用户手动操作时才记录，加载服务时不记录
             if not self.loading_services:
                 # 记录监控记录
                 operation = "启用" if checked else "禁用"
-                self.add_monitoring_record(
-                    service_name=info['service_name'],
-                    status="自动重启",
-                    operation=f"{operation}自动重启"
-                )
+                # 如果是多选，记录为批量操作
+                if len(selected_rows) > 1:
+                    operation = f"批量{operation}自动重启 ({len(selected_rows)}个服务)"
+                    self.add_monitoring_record(
+                        service_name=f"批量操作",
+                        status="批量操作",
+                        operation=operation
+                    )
+                else:
+                    self.add_monitoring_record(
+                        service_name=info['service_name'],
+                        status="自动重启",
+                        operation=f"{operation}自动重启"
+                    )
 
     def start_all_monitoring(self):
         """开启所有服务的监控"""
