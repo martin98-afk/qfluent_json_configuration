@@ -18,7 +18,7 @@ class LogisticRegressionComponent(BaseComponent):
 
     @classmethod
     def get_inputs(cls):
-        return [("text", "text")]
+        return [("text", "text"), ("value", "value")]
 
     @classmethod
     def get_outputs(cls):
