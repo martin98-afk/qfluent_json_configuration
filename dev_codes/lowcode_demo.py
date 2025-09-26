@@ -12,14 +12,15 @@ import io
 from collections import deque, defaultdict
 from contextlib import redirect_stdout, redirect_stderr
 
-from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QVBoxLayout, QTreeWidgetItem, QMenu, QDesktopWidget
-from PyQt5.QtCore import Qt, QMimeData, QTimer
-from PyQt5.QtGui import QDrag
+from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QVBoxLayout, QTreeWidgetItem, QLabel
+from PyQt5.QtCore import Qt, QMimeData, QTimer, QRectF
+from PyQt5.QtGui import QDrag, QPixmap, QPainter, QColor, QPen
 from qfluentwidgets import (
     FluentWindow, TreeWidget,
     PrimaryPushButton, setTheme, Theme, FluentIcon as FIF, ToolButton, MessageBox, InfoBar, InfoBarPosition
 )
-from NodeGraphQt import NodeGraph
+from NodeGraphQt import NodeGraph, BaseNode
+from NodeGraphQt.constants import NodePropWidgetEnum
 
 # ----------------------------
 # 节点运行状态枚举
@@ -28,6 +29,14 @@ NODE_STATUS_UNRUN = "unrun"      # 未运行
 NODE_STATUS_RUNNING = "running"  # 运行中
 NODE_STATUS_SUCCESS = "success"  # 运行成功
 NODE_STATUS_FAILED = "failed"    # 运行失败
+
+# 状态颜色映射
+STATUS_COLORS = {
+    NODE_STATUS_UNRUN: "#888888",
+    NODE_STATUS_RUNNING: "#4A90E2",
+    NODE_STATUS_SUCCESS: "#2ECC71",
+    NODE_STATUS_FAILED: "#E74C3C"
+}
 
 # ----------------------------
 # 属性面板（右侧）
@@ -54,7 +63,6 @@ class PropertyPanel(CardWidget):
         self.vbox = QVBoxLayout(self)
         self.vbox.setContentsMargins(20, 20, 20, 20)
         self.current_node = None
-        self.status_label = None
 
     def update_properties(self, node):
         # 清空所有控件
@@ -74,12 +82,7 @@ class PropertyPanel(CardWidget):
         title.setStyleSheet("font-size: 16px; font-weight: bold;")
         self.vbox.addWidget(title)
 
-        # 2. 状态标签
-        self.status_label = BodyLabel("")
-        self.update_status_label()
-        self.vbox.addWidget(self.status_label)
-
-        # 3. 操作按钮组
+        # 2. 操作按钮组
         self.vbox.addWidget(BodyLabel("Actions:"))
 
         # 运行该节点
@@ -102,12 +105,12 @@ class PropertyPanel(CardWidget):
         delete_btn.clicked.connect(lambda: self.delete_current_node())
         self.vbox.addWidget(delete_btn)
 
-        # 4. 查看日志按钮
+        # 3. 查看日志按钮
         log_btn = PrimaryPushButton("📄 View Node Log", self)
         log_btn.clicked.connect(lambda: self.view_node_log())
         self.vbox.addWidget(log_btn)
 
-        # 5. 输入端口
+        # 4. 输入端口
         self.vbox.addWidget(BodyLabel("📥 Input Ports:"))
         for input_port in node.input_ports():
             port_name = input_port.name()
@@ -120,7 +123,7 @@ class PropertyPanel(CardWidget):
             text_edit.setMaximumHeight(80)
             self.vbox.addWidget(text_edit)
 
-        # 6. 输出端口
+        # 5. 输出端口
         self.vbox.addWidget(BodyLabel("📤 Output Ports:"))
         result = self.get_node_result(node)
         if result:
@@ -134,30 +137,6 @@ class PropertyPanel(CardWidget):
                 self.vbox.addWidget(text_edit)
         else:
             self.vbox.addWidget(BodyLabel("  No output yet."))
-
-    def update_status_label(self):
-        """更新状态标签显示"""
-        if not self.current_node or not self.status_label:
-            return
-
-        status = self.main_window.get_node_status(self.current_node)
-        status_text = {
-            NODE_STATUS_UNRUN: "Status: ⚪ Not Run",
-            NODE_STATUS_RUNNING: "Status: 🔄 Running...",
-            NODE_STATUS_SUCCESS: "Status: ✅ Success",
-            NODE_STATUS_FAILED: "Status: ❌ Failed"
-        }
-        self.status_label.setText(status_text.get(status, "Status: Unknown"))
-
-        # 设置颜色
-        color_map = {
-            NODE_STATUS_UNRUN: "#888888",
-            NODE_STATUS_RUNNING: "#4A90E2",
-            NODE_STATUS_SUCCESS: "#2ECC71",
-            NODE_STATUS_FAILED: "#E74C3C"
-        }
-        color = color_map.get(status, "#888888")
-        self.status_label.setStyleSheet(f"color: {color}; font-weight: bold;")
 
     def get_upstream_data(self, node, port_name):
         return self.main_window.get_node_input(node, port_name)
@@ -191,7 +170,7 @@ class PropertyPanel(CardWidget):
 
 
 # ----------------------------
-# 可拖拽的组件树
+# 可拖拽的组件树（带预览）
 # ----------------------------
 class DraggableTreeWidget(TreeWidget):
     def __init__(self, parent=None):
@@ -199,20 +178,148 @@ class DraggableTreeWidget(TreeWidget):
         self.setDragEnabled(True)
         self.setAcceptDrops(False)
         self.setDragDropMode(TreeWidget.DragOnly)
+        self.component_map = {}
+
+    def set_component_map(self, component_map):
+        """设置组件映射，用于拖拽预览"""
+        self.component_map = component_map
 
     def startDrag(self, supportedActions):
-        """开始拖拽操作"""
+        """开始拖拽操作，带预览"""
         item = self.currentItem()
         if item and item.parent():  # 确保是叶子节点（组件，不是分类）
             category = item.parent().text(0)
             name = item.text(0)
             full_path = f"{category}/{name}"
 
+            # 创建拖拽对象
             drag = QDrag(self)
             mime_data = QMimeData()
             mime_data.setText(full_path)
             drag.setMimeData(mime_data)
+
+            # 创建预览 pixmap
+            preview = self.create_drag_preview(full_path)
+            drag.setPixmap(preview)
+            drag.setHotSpot(preview.rect().center())
+
             drag.exec_(Qt.CopyAction)
+
+    def create_drag_preview(self, full_path):
+        """创建拖拽预览 pixmap"""
+        comp_cls = self.component_map.get(full_path)
+        if not comp_cls:
+            # 默认预览
+            pixmap = QPixmap(120, 60)
+            pixmap.fill(Qt.transparent)
+            painter = QPainter(pixmap)
+            painter.setPen(QPen(QColor("#4A90E2"), 2))
+            painter.drawRect(0, 0, 119, 59)
+            painter.setPen(Qt.black)
+            painter.drawText(QRectF(10, 20, 100, 20), Qt.AlignLeft, "Component")
+            painter.end()
+            return pixmap
+
+        # 创建组件预览
+        pixmap = QPixmap(150, 80)
+        pixmap.fill(Qt.transparent)
+        painter = QPainter(pixmap)
+
+        # 绘制节点背景
+        painter.setPen(QPen(QColor("#4A90E2"), 2))
+        painter.setBrush(QColor("#2D2D2D"))
+        painter.drawRect(0, 0, 149, 79)
+
+        # 绘制标题
+        painter.setPen(Qt.white)
+        painter.setFont(painter.font())
+        painter.drawText(QRectF(10, 10, 130, 20), Qt.AlignLeft, comp_cls.name)
+
+        # 绘制类别
+        painter.setPen(QColor("#888888"))
+        painter.drawText(QRectF(10, 35, 130, 15), Qt.AlignLeft, f"Category: {comp_cls.category}")
+
+        # 绘制输入端口
+        inputs = comp_cls.get_inputs()
+        if inputs:
+            painter.setPen(QColor("#2ECC71"))
+            painter.drawText(QRectF(10, 55, 130, 15), Qt.AlignLeft, f"Inputs: {len(inputs)}")
+
+        # 绘制输出端口
+        outputs = comp_cls.get_outputs()
+        if outputs:
+            painter.setPen(QColor("#E74C3C"))
+            painter.drawText(QRectF(10, 70, 130, 15), Qt.AlignLeft, f"Outputs: {len(outputs)}")
+
+        painter.end()
+        return pixmap
+
+
+# ----------------------------
+# 自定义节点类（支持状态显示）
+# ----------------------------
+class StatusNode(BaseNode):
+    """支持状态显示的基节点类"""
+    def __init__(self):
+        super().__init__()
+        self._status = NODE_STATUS_UNRUN
+        self._status_pixmap = None
+        self._update_status_pixmap()
+
+    @property
+    def status(self):
+        return self._status
+
+    @status.setter
+    def status(self, value):
+        if value != self._status:
+            self._status = value
+            self._update_status_pixmap()
+            self.view.update()
+
+    def _update_status_pixmap(self):
+        """更新状态 pixmap"""
+        if self._status == NODE_STATUS_UNRUN:
+            self._status_pixmap = None
+            return
+
+        # 创建状态指示器 pixmap
+        pixmap = QPixmap(16, 16)
+        pixmap.fill(Qt.transparent)
+        painter = QPainter(pixmap)
+
+        color = QColor(STATUS_COLORS.get(self._status, "#888888"))
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(color)
+        painter.drawEllipse(0, 0, 15, 15)
+
+        # 绘制状态图标
+        if self._status == NODE_STATUS_RUNNING:
+            painter.setPen(Qt.white)
+            painter.setFont(painter.font())
+            painter.drawText(4, 12, "...")
+        elif self._status == NODE_STATUS_SUCCESS:
+            painter.setPen(Qt.white)
+            painter.drawText(4, 12, "✓")
+        elif self._status == NODE_STATUS_FAILED:
+            painter.setPen(Qt.white)
+            painter.drawText(4, 12, "✗")
+
+        painter.end()
+        self._status_pixmap = pixmap
+
+    def paint(self, painter, option, widget):
+        """重写绘制方法，添加状态指示器"""
+        super().paint(painter, option, widget)
+
+        if self._status_pixmap:
+            # 在节点右上角绘制状态指示器
+            status_rect = self.boundingRect()
+            painter.drawPixmap(
+                status_rect.right() - 20,
+                status_rect.top() + 5,
+                self._status_pixmap
+            )
 
 
 # ----------------------------
@@ -221,6 +328,8 @@ class DraggableTreeWidget(TreeWidget):
 class LowCodeWindow(FluentWindow):
     def __init__(self):
         super().__init__()
+        setTheme(Theme.DARK)
+        from PyQt5.QtWidgets import QDesktopWidget
         screen_rect = QDesktopWidget().screenGeometry()
         screen_width, screen_height = screen_rect.width(), screen_rect.height()
         self.window_width = int(screen_width * 0.6)
@@ -243,7 +352,9 @@ class LowCodeWindow(FluentWindow):
         for full_path, comp_cls in self.component_map.items():
             safe_name = full_path.replace("/", "_").replace(" ", "_").replace("-", "_")
             node_class = create_node_class(comp_cls)
-            node_class.__name__ = f"DynamicNode_{safe_name}"
+            # 继承 StatusNode 以支持状态显示
+            node_class = type(f"Status{node_class.__name__}", (StatusNode, node_class), {})
+            node_class.__name__ = f"StatusDynamicNode_{safe_name}"
             self.graph.register_node(node_class)
             self.node_type_map[full_path] = f"dynamic.{node_class.__name__}"
 
@@ -253,6 +364,7 @@ class LowCodeWindow(FluentWindow):
         self.nav_view = DraggableTreeWidget(self)
         self.nav_view.setHeaderHidden(True)
         self.nav_view.setFixedWidth(200)
+        self.nav_view.set_component_map(self.component_map)  # 设置组件映射用于预览
         self.build_component_tree(self.component_map)
 
         # 属性面板
@@ -268,6 +380,7 @@ class LowCodeWindow(FluentWindow):
         canvas_layout.addWidget(self.property_panel, 0, Qt.AlignRight)
         main_layout.addLayout(canvas_layout)
         self.addSubInterface(central_widget, FIF.APPLICATION, 'Canvas')
+        self.navigationInterface.hide()  # 隐藏导航栏
 
         # 创建悬浮按钮
         self.create_floating_buttons()
@@ -334,6 +447,9 @@ class LowCodeWindow(FluentWindow):
                 node.set_pos(scene_pos.x(), scene_pos.y())
                 # 初始化状态
                 self.node_status[node.id] = NODE_STATUS_UNRUN
+                # 设置节点状态（用于视觉显示）
+                if hasattr(node, 'status'):
+                    node.status = NODE_STATUS_UNRUN
             event.accept()
         else:
             event.ignore()
@@ -345,10 +461,13 @@ class LowCodeWindow(FluentWindow):
     def set_node_status(self, node, status):
         """设置节点状态"""
         self.node_status[node.id] = status
+        # 更新节点视觉状态
+        if hasattr(node, 'status'):
+            node.status = status
         # 如果当前选中的是这个节点，更新属性面板
         if (self.property_panel.current_node and
             self.property_panel.current_node.id == node.id):
-            self.property_panel.update_status_label()
+            self.property_panel.update_properties(self.property_panel.current_node)
 
     def execute_node(self, node, upstream_outputs):
         """执行单个节点，返回输出"""
@@ -559,6 +678,8 @@ class LowCodeWindow(FluentWindow):
             self.node_status = {}
             for node in self.graph.all_nodes():
                 self.node_status[node.id] = NODE_STATUS_UNRUN
+                if hasattr(node, 'status'):
+                    node.status = NODE_STATUS_UNRUN
         except FileNotFoundError:
             print("workflow.json not found!")
 
