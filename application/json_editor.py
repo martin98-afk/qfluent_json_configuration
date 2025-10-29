@@ -1866,8 +1866,8 @@ class JSONEditor(QWidget):
             param_no,
             run_type
         )
-        self.threadpool.start(worker)
-        worker.signals.finished.connect(self.create_successbar)
+        self.thread_pool.start(worker)
+        worker.signals.finished.connect(lambda: self.create_successbar("模型运行成功"))
         worker.signals.error.connect(self.create_errorbar)
 
     def show_component_logs(self):

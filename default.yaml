@@ -284,6 +284,28 @@ param-structure:
         options:
         - cpu
         - '0'
+      服务id:
+        type: text
+        default: ''
+      置信度阈值:
+        type: slider
+        default: '0.4'
+        options:
+        - '0'
+        - '1'
+        - '1'
+      zlmedikit地址:
+        type: text
+        default: ''
+      zlmedikit端口:
+        type: text
+        default: ''
+      zlmedikit密钥:
+        type: text
+        default: ''
+      kafka地址:
+        type: text
+        default: ''
 param-template:
   text:
     name: 文本编辑

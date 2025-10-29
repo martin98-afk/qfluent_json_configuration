@@ -11,9 +11,10 @@ import pickle
 import re
 import sys
 
+from NodeGraphQt import BaseNode, NodeBaseWidget
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QIcon
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QDateTimeEdit
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QDateTimeEdit, QFileDialog, QLabel
 from loguru import logger
 
 
@@ -225,3 +226,41 @@ def generate_uuid():
 
     # 将 UUID 转换为字符串
     return str(new_uuid)
+
+
+def create_node_class(template: dict):
+    """直接返回一个完整的节点类，支持文件上传按钮和独立日志"""
+
+    class DynamicNode(BaseNode):
+        __identifier__ = 'dynamic'
+        NODE_NAME = template.get("name")
+        param_dict = {
+            "default": "默认值",
+            "options": "配置项"
+        }
+        def __init__(self):
+            super().__init__()
+            self.component_class = template
+            self._node_logs = ""  # 节点独立日志存储
+            self._output_values = {}  # 存储输出端口值
+            self._input_values = {}
+            # 添加参数类型说明
+            self.add_text_input(self.NODE_NAME, self.NODE_NAME)
+            if "params_default" not in template and "params" in template:
+                self.add_text_input("default", label="默认值", text="")
+            elif "params_default" in template and "params" in template:
+                for param, default in zip(template.get("params"), template.get("params_default")):
+                    self.add_text_input(param, label=self.param_dict.get(param, param), text=str(template.get("params_default")))
+            # 添加输入端口
+            self.add_input("", "")
+
+            # 添加输出端口
+            self.add_output("", "")
+
+    return DynamicNode
+
+
+def get_port_node(port):
+    """安全获取端口所属节点，兼容 property 和 method"""
+    node = port.node
+    return node() if callable(node) else node
