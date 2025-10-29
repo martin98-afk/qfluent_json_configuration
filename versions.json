@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.4.1",
+    "publishDate": "2025-10-29 09:44",
+    "forceUpdate": true,
+    "publishNotes": [
+      "feat(config): 实现统一配置管理与界面设置功能",
+      "- 在 default.yaml 中新增多个服务相关配置项，包括服务ID、置信度阈值、zlmedikit 地址、端口、密钥及 Kafka 地址",
+      "- 修改 json_editor.py 中线程池启动逻辑，并优化成功回调提示信息",
+      "- 附加模型更新"
+    ]
+  },{
     "version": "1.4.0",
     "publishDate": "2025-09-24 15:44",
     "forceUpdate": true,
