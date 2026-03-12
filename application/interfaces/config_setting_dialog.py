@@ -482,7 +482,8 @@ class ConfigSettingDialog(QDialog):
         self.config_combo.clear()
         self.config_files_map = {}  # ✅ 确保初始化
         self.config_combo.addItems(yml_files)
-        self.config_files_map = {os.path.basename(f): f for f in files} | {"default.yaml": os.path.join(config_dir, "default.yaml")}
+        self.config_files_map = {os.path.basename(f): f for f in files}
+        self.config_files_map.update({"default.yaml": os.path.join(config_dir, "default.yaml")})
 
         self.config_combo.setCurrentText(0)
 

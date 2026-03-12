@@ -80,7 +80,7 @@ class ServicesTest:
             else:
                 return resp.json()
 
-    def test(self, service: str, data_list: list[dict]):
+    def test(self, service: str, data_list: list):
         with ThreadPoolExecutor(max_workers=self.max_workers) as exe:
             future_map = {
                 exe.submit(self._test_single, service, d): idx

@@ -1649,7 +1649,7 @@ class JSONEditor(QWidget):
 
         return config2
 
-    @error_catcher_decorator
+    # @error_catcher_decorator
     def load_tree(self, data, parent=None, path_prefix="", bind_model=True):
         # 加载配置时如果有对应绑定模型后的配置，自动关联到对应模型
         matched_key = next((key for key in data if self.model_binding_prefix in key), None)
@@ -1686,7 +1686,7 @@ class JSONEditor(QWidget):
             self.model_selector_btn.setText("<无关联模型>")
             self.model_selector_btn.setIcon(QIcon())
         # 如果有没有在初始化参数中出现的参数，则自动根据初始化参数添加
-        data = self.merge_config(self.config.init_params, self.config.init_params | data) if not path_prefix else data
+        data = self.merge_config(self.config.init_params, data) if not path_prefix else data
         # 正常加载参数配置
         for key, value in data.items():
             full_path = f"{path_prefix}/{key}" if path_prefix and not re.search(r' [参数]*[0-9]+', key) else key
@@ -1716,7 +1716,8 @@ class JSONEditor(QWidget):
 
                 self.lock_item(key, parent, item)
                 if re.search(r' [参数]*[0-9]+', full_path):
-                    value = self.config.subchildren_default.get(path_prefix, {}) | value
+                    final_value = self.config.subchildren_default.get(path_prefix, {})
+                    final_value.update(value)
                     self.load_tree(value, item, path_prefix=path_prefix, bind_model=False)
                 else:
                     self.load_tree(value, item, path_prefix=full_path, bind_model=False)

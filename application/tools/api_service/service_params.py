@@ -23,7 +23,7 @@ class ServiceParamsFetcher(BaseTool):
         self.service_params_path = service_params_path
         self.max_workers = max_workers
 
-    def call(self, service_id: str) -> list[str]:
+    def call(self, service_id: str) -> list:
         """
         获取设备名称列表，带重试机制，避免超时导致失败。
         serviceVersionId=1915666374433177600

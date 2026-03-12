@@ -226,12 +226,13 @@ class ParamConfigLoader(QObject):
         # 增加连接postgres数据库的工具
         if "nacos" in cfg:
             nacos_cfg = cfg.pop("nacos", {})
-            nacos_cfg = nacos_cfg | {
+            nacos_cfg = nacos_cfg
+            nacos_cfg.update({
                 "host": f"http://{self.global_host if 'host' not in nacos_cfg else nacos_cfg['host']}:{nacos_cfg.get('port', '8849')}",
                 "username": nacos_cfg.get("username", "nacos"),
                 "password": nacos_cfg.get("password", "nacos"),
                 "namespace": nacos_cfg.get("namespace", "sushine"),
-            }
+            })
             try:
                 tool_list["get_service_path"] = GetNacosServicePath(**nacos_cfg)
                 tool_list["write_service_path"] = WriteNacosServicePath(**nacos_cfg)
@@ -332,9 +333,9 @@ class ParamConfigLoader(QObject):
 
     def add_binding_model_params(self, param_structure: dict):
         self.model_binding_structure = param_structure
-        self.init_params = self.init_params | self._recursive_parse(
+        self.init_params.update(self._recursive_parse(
             self.model_binding_structure, self.params_type, self.require_flag, self.params_default, self.params_options, self.params_desc
-        )
+        ))
 
     def remove_binding_model_params(self):
         self.params_type = {}

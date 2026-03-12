@@ -117,7 +117,8 @@ class DiFlowParams(BaseTool):
                             if type == "1":
                                 select_options = ["否", "是"]
                                 option2val[k] = {vv: kk for kk, vv in enumerate(select_options)}
-                                flow_params_value[key] = flow_params_value[key] | {
+                                # 修改处：使用 update
+                                flow_params_value[key].update({
                                     k: {
                                         "param_name": name,
                                         "default": select_options[int(v[1])] if v[1] else "",
@@ -125,11 +126,12 @@ class DiFlowParams(BaseTool):
                                         "required": flow_params.get(value[1], {}).get(v[0], ("", ""))[-1],
                                         "options": select_options
                                     }
-                                }
+                                })
                             elif type == "2":
                                 options = self.get_node_params_options(conn, v[0])
                                 option2val[k] = {vv: kk for kk, vv in options.items()}
-                                flow_params_value[key] = flow_params_value[key] | {
+                                # 修改处：使用 update
+                                flow_params_value[key].update({
                                     k: {
                                         "param_name": name,
                                         "default": options.get(v[1], ""),
@@ -137,11 +139,12 @@ class DiFlowParams(BaseTool):
                                         "required": flow_params.get(value[1], {}).get(v[0], ("", ""))[-1],
                                         "options": list(options.values())
                                     }
-                                }
+                                })
                             elif type == "3":
                                 options = self.get_node_params_options(conn, v[0])
                                 option2val[k] = {vv: kk for kk, vv in options.items()}
-                                flow_params_value[key] = flow_params_value[key] | {
+                                # 修改处：使用 update
+                                flow_params_value[key].update({
                                     k: {
                                         "param_name": name,
                                         "default": ", ".join([options.get(item, "") for item in v[1].split(",")]),
@@ -149,16 +152,17 @@ class DiFlowParams(BaseTool):
                                         "required": flow_params.get(value[1], {}).get(v[0], ("", ""))[-1],
                                         "options": list(options.values())
                                     }
-                                }
+                                })
                             else:
-                                flow_params_value[key] = flow_params_value[key] | {
+                                # 修改处：使用 update
+                                flow_params_value[key].update({
                                     k: {
                                         "param_name": name,
                                         "default": v[1],
                                         "required": flow_params.get(value[1], {}).get(v[0], ("", ""))[-1],
                                         "type": self.type_dict.get(type, "text"),
                                     }
-                                }
+                                })
 
                     if not flow_params_value[key]:
                         flow_params_value.pop(key)
@@ -169,16 +173,16 @@ class DiFlowParams(BaseTool):
         structure_params = copy.deepcopy(flow_params_value)
         children = {}
         for key, param in structure_params.items():
-            children = children | {
+            children.update({
                 get_unique_name(param.pop("name"), children.keys()): {
                     "type": "group",
                     "id": key,
                     "children": {
-                        v.pop("param_name"): v | {"id": k}
+                        v.pop("param_name"): {**v, "id": k} # 修改处：在字典推导式中使用解包代替 |
                         for k, v in param.items()
                     }
                 }
-            }
+            })
         param_structure = {
             f"{prefix}{service_name}": {
                 "type": "group",

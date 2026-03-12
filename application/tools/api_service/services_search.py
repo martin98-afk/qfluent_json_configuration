@@ -23,7 +23,7 @@ class SeviceListSearcher(BaseTool):
         self.service_list_path = service_list_path
         self.max_workers = max_workers
 
-    def call(self) -> list[list[str]]:
+    def call(self) -> list:
         """
         获取数智服务列表，列表有服务名称、服务地址、版本id组成。
         """

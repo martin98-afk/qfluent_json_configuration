@@ -18,5 +18,5 @@ class BaseTool(ABC):
     def call(self, **kwargs) -> dict:
         raise NotImplementedError
 
-    def batch_call(self, **kwargs) -> list[dict]:
+    def batch_call(self, **kwargs) -> list:
         raise NotImplementedError

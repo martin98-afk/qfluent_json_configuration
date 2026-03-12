@@ -28,7 +28,7 @@ class WriteNacosServicePath(BaseTool):
                              "group": group,
                              "namespace": namespace}
 
-    def call(self, service_urls: list[str]):
+    def call(self, service_urls: list):
         """
         param:
         service_list: 服务列表：【服务名称，服务url】

@@ -26,7 +26,7 @@ class TrenddbFetcher(BaseTool):
             end_time: datetime,
             data_num: int = 2000,
             **kwargs
-    ) -> dict[str, Tuple[np.ndarray, np.ndarray]]:
+    ) -> dict:
         """从API获取数据"""
         params = {
             "startTime": start_time.strftime("%Y-%m-%d %H:%M:%S"),

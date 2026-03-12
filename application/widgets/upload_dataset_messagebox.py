@@ -15,7 +15,7 @@ from application.utils.utils import get_icon, resource_path, get_button_style_sh
 class UploadDatasetMessageBox(MessageBoxBase):
     """ Custom message box """
 
-    def __init__(self, upload_paths: list[str], parent=None):
+    def __init__(self, upload_paths: list, parent=None):
         super().__init__(parent)
         self.titleLabel = SubtitleLabel("选择数据集上传目标组件")
         # 选择上传文件行
