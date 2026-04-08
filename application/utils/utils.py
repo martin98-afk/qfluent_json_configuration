@@ -4,8 +4,9 @@
 @contact: mading@luculent.net
 @file: utils.py
 @time: 2025/4/27 10:03
-@desc: 
+@desc:
 """
+
 import os
 import pickle
 import re
@@ -34,19 +35,19 @@ def sanitize_path(path):
             break
     # 反转并清理每个路径部分
     parts.reverse()
-    cleaned = [re.sub(illegal_chars, '_', p) for p in parts]
+    cleaned = [re.sub(illegal_chars, "_", p) for p in parts]
     # 重新组合路径
-    return os.path.join(*cleaned) if cleaned else ''
+    return os.path.join(*cleaned) if cleaned else ""
 
 
-def save_point_cache(data, filename='point_cache.pkl'):
-    with open(filename, 'wb') as f:
+def save_point_cache(data, filename="point_cache.pkl"):
+    with open(filename, "wb") as f:
         pickle.dump(data, f)
 
 
-def load_point_cache(filename='point_cache.pkl'):
+def load_point_cache(filename="point_cache.pkl"):
     try:
-        with open(filename, 'rb') as f:
+        with open(filename, "rb") as f:
             return pickle.load(f)
     except FileNotFoundError:
         return {}
@@ -58,6 +59,7 @@ def error_catcher_decorator(func):
             return func(*args, **kwargs)
         except Exception as e:
             import traceback
+
             logger.error(f"Error in {func.__name__}: {traceback.format_exc()}")
 
     return wrapper
@@ -140,14 +142,13 @@ def styled_dt(dt_edit: QDateTimeEdit) -> QDateTimeEdit:
 
 def resource_path(relative_path):
     """获取打包后资源文件的绝对路径"""
-    if hasattr(sys, '_MEIPASS'):
+    if hasattr(sys, "_MEIPASS"):
         # 如果是打包后的环境
         base_path = sys._MEIPASS
     else:
         # 开发环境，直接使用当前路径
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
-
 
 
 def get_unique_name(base_name, existing_names):
@@ -199,8 +200,9 @@ def seed_everything(seed: int = 1):
     import random
     import os
     import numpy as np
+
     random.seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
     np.random.seed(seed)
 
 
@@ -221,7 +223,7 @@ def wrap_widget(widget, stretch=True):
 
 def generate_uuid():
     # 生成一个随机 UUID
-    new_uuid = __import__('uuid').uuid4()
+    new_uuid = __import__("uuid").uuid4()
 
     # 将 UUID 转换为字符串
     return str(new_uuid)
@@ -231,3 +233,26 @@ def get_port_node(port):
     """安全获取端口所属节点，兼容 property 和 method"""
     node = port.node
     return node() if callable(node) else node
+
+
+def serialize_for_json(data):
+    """序列化数据为JSON兼容格式"""
+    if data is None:
+        return None
+    return data
+
+
+def deserialize_from_json(data):
+    """从JSON兼容格式反序列化数据"""
+    if data is None:
+        return None
+    return data
+
+
+def get_unified_font(font_size=12, bold=False):
+    """获取统一的字体配置"""
+    from PyQt5.QtGui import QFont
+
+    font = QFont("Segoe UI", font_size)
+    font.setBold(bold)
+    return font

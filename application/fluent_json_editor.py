@@ -4,7 +4,7 @@
 @contact: mading@luculent.net
 @file: fluent_json_editor.py
 @time: 2025/7/16 17:05
-@desc: 
+@desc:
 """
 
 from PyQt5.QtCore import QSize
@@ -15,6 +15,7 @@ from qfluentwidgets import FluentIcon as FIF
 from qfluentwidgets import NavigationItemPosition, FluentWindow, SplashScreen
 
 from application.interfaces.config_setting_dialog import ConfigSettingDialog
+from application.interfaces.llm_agent_interface import LLMAgentInterface
 from application.interfaces.logger_dialog import QTextEditLogger
 from application.interfaces.nacos_service_manage import ServiceConfigManager
 from application.interfaces.service_status_monitor import ServiceStatusMonitor
@@ -56,74 +57,88 @@ class FluentJSONEditor(FluentWindow):
         # 4. 隐藏启动页面
         self.splashScreen.finish()
 
-
     def _init_menu(self):
         """界面初始化"""
         # 趋势分析
-        self.trend_analysis_dialog = TrendAnalysisDialog(
-            parent=self.editor,
-            home=self
-        )
+        self.trend_analysis_dialog = TrendAnalysisDialog(parent=self.editor, home=self)
         # 下控配置
-        self.service_config_manager = ServiceConfigManager(
-            parent=self.editor
-        )
+        self.service_config_manager = ServiceConfigManager(parent=self.editor)
         # 服务测试
         self.service_test = JSONServiceTester("", self.editor, self)
         # 服务状态监控
         self.service_monitor = ServiceStatusMonitor(editor=self.editor, parent=self)
         # 配置设置
         self.config_setting = ConfigSettingDialog(self.editor)
+        # 大模型对话
+        self.llm_chat = LLMAgentInterface(parent=self.editor, homepage=self)
 
     def _initNavigation(self):
         """页面加载到主页面中"""
         self.navigationInterface.setExpandWidth(200)
         # 上半部分按钮
-        self.addSubInterface(self.editor, FIF.HOME, '配置界面')
-        trend_interface = self.addSubInterface(self.trend_analysis_dialog, get_icon("趋势分析"), '趋势分析')
+        self.addSubInterface(self.editor, FIF.HOME, "配置界面")
+        trend_interface = self.addSubInterface(
+            self.trend_analysis_dialog, get_icon("趋势分析"), "趋势分析"
+        )
         trend_interface.clicked.connect(
             lambda: (
                 self.trend_analysis_dialog.param_type_combo.clear(),
-                self.trend_analysis_dialog.param_type_combo.addItems(self.editor.config.get_params_name()),
+                self.trend_analysis_dialog.param_type_combo.addItems(
+                    self.editor.config.get_params_name()
+                ),
                 self.trend_analysis_dialog.param_type_combo.setCurrentIndex(0),
-                self.trend_analysis_dialog._load_points()
+                self.trend_analysis_dialog._load_points(),
             )
         )
-        nacos_interface = self.addSubInterface(self.service_config_manager, get_icon("nacos"), 'Nacos下控服务配置')
+        nacos_interface = self.addSubInterface(
+            self.service_config_manager, get_icon("nacos"), "Nacos下控服务配置"
+        )
         nacos_interface.clicked.connect(self.service_config_manager.get_service_list)
-        service_interface = self.addSubInterface(self.service_test, get_icon("服务接口配置"), '服务测试')
+        service_interface = self.addSubInterface(
+            self.service_test, get_icon("服务接口配置"), "服务测试"
+        )
         service_interface.clicked.connect(self.service_test.load_services)
-        service_moniter = self.addSubInterface(self.service_monitor, get_icon("状态监控"), '服务监控')
+        service_moniter = self.addSubInterface(
+            self.service_monitor, get_icon("状态监控"), "服务监控"
+        )
         service_moniter.clicked.connect(self.service_monitor.load_services)
+        llm_chat_interface = self.addSubInterface(
+            self.llm_chat, get_icon("AI"), "大模型对话"
+        )
         self.updater = UpdateChecker(self.editor, self)
         self.updater.check_update()
-        self.window_title = f"{self.editor.config.title} - V{self.updater.current_version}"
+        self.window_title = (
+            f"{self.editor.config.title} - V{self.updater.current_version}"
+        )
 
         # 下半部分按钮
         log_interface = self.addSubInterface(
-            self.log_viewer, get_icon("系统运行日志"), '执行日志', NavigationItemPosition.BOTTOM)
+            self.log_viewer,
+            get_icon("系统运行日志"),
+            "执行日志",
+            NavigationItemPosition.BOTTOM,
+        )
         log_interface.clicked.connect(
             lambda: (
                 self.text_logger._clean_trailing_empty_lines(),
-                self.text_logger.scroll_to_bottom(force=True)
+                self.text_logger.scroll_to_bottom(force=True),
             )
         )
         self.navigationInterface.addItem(
-            routeKey='update',
+            routeKey="update",
             icon=FIF.SYNC,
-            text='检查更新',
+            text="检查更新",
             onClick=self.updater.check_update,
             selectable=False,
             position=NavigationItemPosition.BOTTOM,
         )
-        self.config_setting_interface = (
-            self.addSubInterface(
-                self.config_setting, FIF.SETTING, '设置', NavigationItemPosition.BOTTOM)
+        self.config_setting_interface = self.addSubInterface(
+            self.config_setting, FIF.SETTING, "设置", NavigationItemPosition.BOTTOM
         )
         self.navigationInterface.addItem(
-            routeKey='about',
+            routeKey="about",
             icon=FIF.INFO,
-            text='关于',
+            text="关于",
             onClick=self.show_about_dialog,
             selectable=False,
             position=NavigationItemPosition.BOTTOM,
@@ -138,16 +153,19 @@ class FluentJSONEditor(FluentWindow):
         self.move(w // 2 - self.width() // 2, h // 2 - self.height() // 2)
 
     def show_about_dialog(self):
-        QMessageBox.about(self, "关于",
-                          f"配置编辑器 v{self.updater.current_version}\n"
-                          "© 2025 Luculent\n"
-                          "用于多配置文件编辑与管理")
+        QMessageBox.about(
+            self,
+            "关于",
+            f"配置编辑器 v{self.updater.current_version}\n"
+            "© 2025 Luculent\n"
+            "用于多配置文件编辑与管理",
+        )
 
     def setup_log_viwer(self):
-        if not hasattr(self, 'log_viewer'):
+        if not hasattr(self, "log_viewer"):
             self.log_viewer = QPlainTextEdit()
             self.log_viewer.document().setDocumentMargin(0)
-            self.log_viewer.setObjectName('运行日志')
+            self.log_viewer.setObjectName("运行日志")
             self.log_viewer.setReadOnly(True)
             self.log_viewer.setFont(QFont("Consolas", 11))
             self.log_viewer.setStyleSheet(f"""
@@ -211,4 +229,8 @@ class FluentJSONEditor(FluentWindow):
             # 创建 sink
             self.text_logger = QTextEditLogger(self.log_viewer, max_lines=1000)
             logger.remove()
-            logger.add(self.text_logger, format="{time:HH:mm:ss} | {level} | {file}:{line} {message}", level="DEBUG")
+            logger.add(
+                self.text_logger,
+                format="{time:HH:mm:ss} | {level} | {file}:{line} {message}",
+                level="DEBUG",
+            )

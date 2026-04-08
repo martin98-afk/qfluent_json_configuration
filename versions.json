@@ -1,5 +1,16 @@
 [
   {
+    "version": "1.4.2",
+    "publishDate": "2026-04-07 10:35",
+    "forceUpdate": true,
+    "publishNotes": [
+      "feat(llm_chatter): 初始化LLM chatter核心模块和内置工具系统",
+      "- 创建核心模块包括聊天引擎、工具执行器、记忆管理和智能体",
+      "- 添加智能体管理功能，支持多模式智能体配置和权限控制",
+      "- 集成QtWebEngine支持，优化DPI缩放设置",
+      "- 提供完整的工具Schema定义用于LLM调用"
+    ]
+  },{
     "version": "1.4.1",
     "publishDate": "2025-10-29 09:44",
     "forceUpdate": true,

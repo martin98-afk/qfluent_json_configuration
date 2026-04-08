@@ -7,21 +7,34 @@ from PyQt5.QtGui import QFont, QPalette
 from PyQt5.QtWidgets import QApplication
 
 from application.fluent_json_editor import FluentJSONEditor
-from application.utils.config_handler import load_config, save_history, save_config, HISTORY_PATH
+from application.utils.config_handler import (
+    load_config,
+    save_history,
+    save_config,
+    HISTORY_PATH,
+)
 from application.utils.utils import seed_everything
 
 
 def enable_dpi_scale():
     # enable dpi scale
-    QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
+    QApplication.setHighDpiScaleFactorRoundingPolicy(
+        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+    )
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
+
+
+def _setup_webengine():
+    QApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
+    from PyQt5.QtWebEngineWidgets import QWebEngineView
 
 
 def run_app():
     seed_everything()
     # os.environ["OMP_NUM_THREADS"] = "3"
     enable_dpi_scale()
+    _setup_webengine()
 
     app = QApplication(sys.argv)
     app.setAttribute(Qt.AA_DontCreateNativeWidgetSiblings)
