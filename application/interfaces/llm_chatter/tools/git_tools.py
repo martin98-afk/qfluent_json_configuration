@@ -2,7 +2,6 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 
-from loguru import logger
 from application.interfaces.llm_chatter.tools.result import ToolResult
 
 

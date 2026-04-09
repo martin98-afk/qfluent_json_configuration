@@ -18,7 +18,7 @@ jenkspy
 ruamel.yaml
 deepdiff
 PyQt-Fluent-Widgets
-psycopg2<2.9.10
+psycopg2
 openai
 markdown
 pygments

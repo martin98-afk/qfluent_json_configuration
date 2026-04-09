@@ -12,9 +12,7 @@ class CanvasTools:
 
     def _get_webhook_manager(self):
         try:
-            from application.interfaces.llm_chatter.stubs import (
-                WebhookManagerStub as WebhookManager,
-            )
+            from app.plugins.trigger_plugins.webhook_trigger import WebhookManager
 
             return WebhookManager()
         except Exception as e:
