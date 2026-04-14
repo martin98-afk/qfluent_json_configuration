@@ -573,7 +573,7 @@ class OpenAIChatToolWindow(ToolWindow):
 
         MINIMAX_CONFIG = {
             "模型名称": "MiniMax-M2.7",
-            "API_KEY": "sk-cp-CsnU7nm-pKoZadYp4gVARrsQ33GrL7Tb2gN5adkU-a7rcfnfzxb9liFjxmGdU7Ypu_A08dAQOi8HLCeOSiCU2WqmWu2whl2j50wZgIHbZjIqp_maVDmjY34",
+            "API_KEY": "sk-cp-YECP4gj2VZt7NxgUYww5Shn5FXBqb8aSIQDD0zMUoLzx10y4KEAYFKHqrmGhmx5Cxt9KV030zSXvyhDyqVs_0n-R2djEgYx6fzMs46T6gf3HooJdS5c4_Kk",
             "API_URL": "https://api.minimax.chat/v1",
             "最大Token": 200000,
             "温度": 0.7,
