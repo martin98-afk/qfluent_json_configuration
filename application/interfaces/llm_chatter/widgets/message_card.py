@@ -700,46 +700,46 @@ class CodeWebViewer(QWebEngineView):
 
                 details.think-block {{
                     margin: 8px 0;
-                    background: linear-gradient(180deg, rgba(19,26,37,0.92), rgba(16,22,31,0.95));
-                    border: 1px solid var(--border);
+                    background: #FFFFFF;
+                    border: 1px solid #E8ECF0;
                     border-radius: 10px;
                 }}
                 details.think-block summary {{
                     padding: 8px 12px;
                     cursor: pointer;
-                    color: var(--text-secondary);
+                    color: #6B7280;
                     font-weight: 600;
                 }}
                 .think-content {{
                     padding: 10px 12px;
-                    border-top: 1px solid var(--border);
-                    color: var(--text-muted) !important;
+                    border-top: 1px solid #E8ECF0;
+                    color: #9CA3AF !important;
                     font-style: italic;
                 }}
 
                 details.tool-block {{
                     margin: 8px 0;
-                    background: {tool_content_bg};
-                    border: 1px solid var(--border);
+                    background: #FFFFFF;
+                    border: 1px solid #E8ECF0;
                     border-radius: 10px;
-                    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+                    box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
                 }}
                 details.tool-block summary {{
                     padding: 8px 12px;
                     cursor: pointer;
-                    color: var(--accent);
+                    color: #3B82F6;
                     font-weight: 600;
                     font-size: 13px;
                     white-space: pre-wrap;
                 }}
                 .tool-content {{
                     padding: 10px 12px;
-                    border-top: 1px solid var(--border);
-                    background: {tool_content_bg};
+                    border-top: 1px solid #E8ECF0;
+                    background: #F9FAFB;
                 }}
                 .tool-content pre {{
                     margin: 0;
-                    color: var(--text-secondary);
+                    color: #4B5563;
                     font-size: 12px;
                     font-family: Consolas, monospace;
                 }}
@@ -1009,7 +1009,7 @@ class MessageCard(SimpleCardWidget):
             themes = {
                 "assistant": {
                     "avatar": "AI",
-                    "title": "CanvasMind",
+                    "title": "JsonConfiger",
                     "subtitle": "Assistant",
                     "bg": "#101720",
                     "border": "#2B415E",
@@ -1020,7 +1020,7 @@ class MessageCard(SimpleCardWidget):
                 },
                 "welcome": {
                     "avatar": "CM",
-                    "title": "CanvasMind",
+                    "title": "JsonConfiger",
                     "subtitle": "Workspace Copilot",
                     "bg": "#161A22",
                     "border": "#635238",
@@ -1045,7 +1045,7 @@ class MessageCard(SimpleCardWidget):
             themes = {
                 "assistant": {
                     "avatar": "AI",
-                    "title": "CanvasMind",
+                    "title": "JsonConfiger",
                     "subtitle": "Assistant",
                     "bg": "#e8f4fd",
                     "border": "#b3d7f1",
@@ -1056,7 +1056,7 @@ class MessageCard(SimpleCardWidget):
                 },
                 "welcome": {
                     "avatar": "CM",
-                    "title": "CanvasMind",
+                    "title": "JsonConfiger",
                     "subtitle": "Workspace Copilot",
                     "bg": "#fff8e8",
                     "border": "#e6d5a8",
@@ -1557,32 +1557,13 @@ def create_welcome_card(
 """
 
     welcome_md = f"""\
-### 👋 你好！我是你的画布开发智能助手
-
-我已为你准备好以下能力，助你高效构建与调试画布：
-
-- **🔗 上下文增强**  
-  可动态插入画布节点、组件信息、全局变量等上下文（点击下方 `+` 选择插入）。
-
-- **⚡ 上下文联动**  
-  点击带链接的名称即可触发交互逻辑：
-  - **跳转节点**：`[节点名](jump)` → 定位到画布中对应节点  
-  - **创建组件**：`[组件名](create)` → 在画布中生成新组件节点  
-  - **生成代码**：`[组件名](generate)` → 跳转至组件开发界面并自动生成代码  
-
----
-*如需切换智能体，请在输入框右下角下拉菜单中选择。*
-
-{agent_tendency}
+### 👋 你好！我是你的脚本生成智能助手
 
 ---
 
 ### 💬 快速开始：点击下方问题直接提问
 
-- [帮我分析当前画布功能是否合理？](ask)  
-- [结合组件库，帮我完善当前画布：列出需新增的组件，如有前置节点需说明具体位置，如何连接，参数如何设置；若组件库缺失，也请说明需生成的新组件。](ask)  
-- [帮我审查当前组件代码，指出潜在问题并提供优化建议。](ask)  
-- [帮我的代码生成一句话描述，说明代码具体功能、输入形式、输出形式、参数形式, 纯文本，不要有换行和任何特殊字符。](ask)
+- [三个文件分别是专家规则提示词，工况excel，以及工况转换样例脚本，你的工作是按照专家规则生成转换脚本，记住不要覆盖样例脚本](ask)
 
 """
 

@@ -60,9 +60,6 @@ from application.interfaces.llm_chatter.utils.worker import (
 from application.interfaces.llm_chatter.widgets.bottom_input_area import (
     SendableTextEdit,
 )
-from application.interfaces.llm_chatter.widgets.context_selector import (
-    ContextSelector,
-)
 from application.interfaces.llm_chatter.widgets.conversation_node_preview import (
     ConversationNodePreview,
 )
@@ -463,11 +460,6 @@ class OpenAIChatToolWindow(ToolWindow):
         hlayout = QHBoxLayout()
         hlayout.setContentsMargins(0, 0, 0, 0)
         hlayout.setSpacing(0)
-        self.context_selector = ContextSelector(self)
-        self.context_selector.selectionChanged.connect(
-            self._on_context_selection_changed
-        )
-        hlayout.addWidget(self.context_selector)
         hlayout.addStretch(1)
 
         self.new_session_btn = TransparentToolButton(FluentIcon.ADD, self)
@@ -475,23 +467,11 @@ class OpenAIChatToolWindow(ToolWindow):
         self.new_session_btn.setToolTip("新建对话")
         self.new_session_btn.clicked.connect(self._create_new_session)
 
-        self.memory_btn = TransparentToolButton(get_icon("长期记忆"), self)
-        self.memory_btn.setFixedSize(26, 26)
-        self.memory_btn.setToolTip("长期记忆管理")
-        self.memory_btn.clicked.connect(self._show_soul_memory)
-
         self.history_btn = TransparentToggleToolButton(FluentIcon.HISTORY, self)
         self.history_btn.setFixedSize(26, 26)
         self.history_btn.setToolTip("历史对话")
         self.history_btn.toggled.connect(self._toggle_history_mode)
 
-        self.shell_btn = TransparentToggleToolButton(get_icon("shell"), self)
-        self.shell_btn.setFixedSize(26, 26)
-        self.shell_btn.setToolTip("Shell执行模式")
-        self.shell_btn.toggled.connect(self._toggle_shell_mode)
-
-        hlayout.addWidget(self.shell_btn)
-        hlayout.addWidget(self.memory_btn)
         hlayout.addWidget(self.history_btn)
         hlayout.addWidget(self.new_session_btn)
 
@@ -1176,7 +1156,11 @@ class OpenAIChatToolWindow(ToolWindow):
             role="user",
             timestamp=timestamp,
             tag_params=tag_params
-            or {key: value for key, value in self.context_selector.context.items()},
+            or (
+                {key: value for key, value in self.context_selector.context.items()}
+                if getattr(self, "context_selector", None) is not None
+                else {}
+            ),
         )
         # card.viewer._install_dialog_filter()
         card.update_content(content)
@@ -1465,7 +1449,12 @@ class OpenAIChatToolWindow(ToolWindow):
         if not user_text:
             return
 
-        context_params = {k: v for k, v in self.context_selector.context.items()}
+        context_selector = getattr(self, "context_selector", None)
+        context_params = (
+            {k: v for k, v in context_selector.context.items()}
+            if context_selector
+            else {}
+        )
 
         self.input_area.clear()
 

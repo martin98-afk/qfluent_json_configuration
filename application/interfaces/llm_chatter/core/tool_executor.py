@@ -131,19 +131,19 @@ class ToolExecutor:
 
         tool_map = {
             "read": lambda: self._builtin_tools.read_file(
-                args.get("filePath"), args.get("offset", 1), args.get("limit", 2000)
+                args.get("path"), args.get("offset", 1), args.get("limit", 2000)
             ),
             "write": lambda: self._builtin_tools.write_file(
-                args.get("filePath"), args.get("content", "")
+                args.get("path"), args.get("content", "")
             ),
             "edit": lambda: self._builtin_tools.edit_file(
-                args.get("filePath"),
+                args.get("path"),
                 args.get("oldString", ""),
                 args.get("newString", ""),
                 args.get("replaceAll", False),
             ),
             "multiedit": lambda: self._builtin_tools.multi_edit(
-                args.get("filePath"),
+                args.get("path"),
                 args.get("edits", []),
             ),
             "grep": lambda: self._builtin_tools.grep_files(
@@ -154,7 +154,7 @@ class ToolExecutor:
             ),
             "list": lambda: self._builtin_tools.list_directory(args.get("path")),
             "patch": lambda: self._builtin_tools.apply_patch(
-                args.get("filePath"), args.get("patch_content", "")
+                args.get("path"), args.get("patch_content", "")
             ),
             "diff": lambda: self._builtin_tools.diff_files(
                 args.get("file1", ""),

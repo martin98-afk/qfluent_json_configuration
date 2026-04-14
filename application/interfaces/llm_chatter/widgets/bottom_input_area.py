@@ -18,7 +18,9 @@ class SendableTextEdit(QTextEdit):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setPlaceholderText("给 CanvasMind 发送消息，Enter 发送，Shift+Enter 换行")
+        self.setPlaceholderText(
+            "给 JsonConfiger 发送消息，Enter 发送，Shift+Enter 换行"
+        )
         self.setAcceptRichText(False)
         self.setLineWrapMode(TextEdit.WidgetWidth)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)

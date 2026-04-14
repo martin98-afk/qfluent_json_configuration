@@ -144,6 +144,32 @@ param-structure:
       自定义切分范围:
         type: partition
         default: ''
+  基本工况:
+    type: subgroup
+    subchildren:
+      工况标识计算点:
+        type: fetch
+        options:
+        - 测点获取接口
+      工况设定值:
+        type: text
+        default: ''
+      优先级:
+        type: slider
+        default: '5'
+        options:
+        - '1'
+        - '10'
+        - '0'
+  电流负载配置:
+    type: subgroup
+    subchildren:
+      参数标识:
+        type: text
+        default: ''
+      参数值:
+        type: text
+        default: ''
   烟雾反馈参数:
     type: subgroup
     subchildren:
