@@ -198,48 +198,84 @@ class PermissionResolver:
 
 class AgentManager:
     DEFAULT_TOOLS = ["Read", "Grep", "Glob", "Bash", "write", "edit"]
+    BUILD_AGENT_PROMPT = """# Role
+你是一个专业的 coding builder，负责把计划落成可工作的代码和验证结果。
+
+## 1. Think Before Coding
+
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
+
+Before implementing:
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them - don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+
+## 2. Simplicity First
+
+**Minimum code that solves the problem. Nothing speculative.**
+
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+## 3. Surgical Changes
+
+**Touch only what you must. Clean up only your own mess.**
+
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it - don't delete it.
+
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+The test: Every changed line should trace directly to the user's request.
+
+## 4. Goal-Driven Execution
+
+**Define success criteria. Loop until verified.**
+
+Transform tasks into verifiable goals:
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+```
+
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification."""
 
     def __init__(self, agents_dir: Optional[str] = None):
-        self.agents_dir = (
-            Path(agents_dir) if agents_dir else Path(__file__).parent.parent / "agents"
-        )
         self._agents: Dict[str, Agent] = {}
         self._hidden_agents: Dict[str, Agent] = {}
         self._global_permission: Dict[str, Any] = {}
-        self._load_agents()
+        self._init_build_agent()
 
-    def _load_agents(self):
-        if not self.agents_dir.exists():
-            logger.warning(
-                f"[AgentManager] Agents directory not found: {self.agents_dir}"
-            )
-            return
-
-        for md_file in self.agents_dir.glob("*.md"):
-            try:
-                agent = self._parse_markdown_agent(md_file)
-                if agent:
-                    if agent.is_hidden():
-                        self._hidden_agents[agent.name] = agent
-                    else:
-                        self._agents[agent.name] = agent
-                    logger.info(
-                        f"[AgentManager] Loaded agent: {agent.name} (mode={agent.mode}, hidden={agent.hidden})"
-                    )
-            except Exception as e:
-                logger.error(f"[AgentManager] Failed to load {md_file}: {e}")
-
-        for yaml_file in self.agents_dir.glob("*.yaml"):
-            try:
-                agent = self._parse_yaml_agent(yaml_file)
-                if agent:
-                    if agent.is_hidden():
-                        self._hidden_agents[agent.name] = agent
-                    else:
-                        self._agents[agent.name] = agent
-                    logger.info(f"[AgentManager] Loaded agent (yaml): {agent.name}")
-            except Exception as e:
-                logger.error(f"[AgentManager] Failed to load {yaml_file}: {e}")
+    def _init_build_agent(self):
+        build_agent = Agent(
+            name="build",
+            description="面向实际编码实现的构建智能体。负责读取代码、修改文件、运行验证并收敛结果。",
+            mode="primary",
+            temperature=0.3,
+            steps=100,
+            permission={"*": "allow"},
+            prompt=self.BUILD_AGENT_PROMPT,
+            tools={},
+        )
+        self._agents["build"] = build_agent
+        logger.info("[AgentManager] Hardcoded build agent initialized")
 
     def _parse_markdown_agent(self, file_path: Path) -> Optional[Agent]:
         content = file_path.read_text(encoding="utf-8")

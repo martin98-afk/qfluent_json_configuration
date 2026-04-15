@@ -143,7 +143,7 @@ class OpenAIChatToolWindow(ToolWindow):
     _valid_configs: Dict[str, Dict[str, Any]] = {}
     history_manager = None
     _agent_manager: Optional[AgentManager] = None
-    _current_agent: str = "plan"
+    _current_agent: str = "build"
     _in_history_mode = False
     _current_history_index: Optional[int] = None
     _settings_popup = None
@@ -484,10 +484,7 @@ class OpenAIChatToolWindow(ToolWindow):
         self.input_area.stopMessageRequested.connect(self._on_stop_clicked)
         self.input_area.clearRequested.connect(self._on_clear_shortcut)
         self.input_area.newSessionRequested.connect(self._create_new_session)
-        self.input_area.agentChanged.connect(self._on_agent_changed)
         layout.addWidget(self.input_area)
-
-        self._load_agent_list()
 
     def _on_model_changed(self, model_name: str):
         self._refresh_context_usage_indicator()
@@ -720,7 +717,6 @@ class OpenAIChatToolWindow(ToolWindow):
         if self._question_floating_widget:
             self._question_floating_widget.clear()
         self._question_tool_call_id = None
-        self._load_agent_list()
         self._on_task_state_changed(session.task_state)
         agent = (
             self._agent_manager.get_agent(self._current_agent)
@@ -901,7 +897,6 @@ class OpenAIChatToolWindow(ToolWindow):
         self.session_manager.set_current_session(restored)
         self._current_history_index = None
         self.title_edit.setText(latest.get("title") or "最近会话")
-        self._load_agent_list()
         self._display_current_session()
         self._refresh_context_usage_indicator()
         return True

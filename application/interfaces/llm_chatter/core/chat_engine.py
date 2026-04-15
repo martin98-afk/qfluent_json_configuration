@@ -99,7 +99,7 @@ class ChatEngine:
         self._current_worker: Optional[OpenAIChatWorker] = None
         self._is_streaming = False
         self._callbacks: Dict[str, Callable] = {}
-        self._current_agent: Optional[str] = "plan"
+        self._current_agent: Optional[str] = "build"
 
     def _make_compaction_state(
         self,
@@ -575,11 +575,11 @@ class ChatEngine:
         session = self._session_manager.get_current_session()
 
         if agent_name is None or agent_name.lower() in ("default", "通用"):
-            self._current_agent = "plan"
+            self._current_agent = "build"
             if session:
-                session.task_state.switch_agent("plan")
-            logger.info("[ChatEngine] Switched to default agent: plan")
-            self._emit("agent_switched", "plan")
+                session.task_state.switch_agent("build")
+            logger.info("[ChatEngine] Switched to default agent: build")
+            self._emit("agent_switched", "build")
             self._emit("task_state_changed", session.task_state if session else None)
             return
 
@@ -618,7 +618,7 @@ class ChatEngine:
         self._is_streaming = True
         session.add_user_message(content=user_text, params=context_params or {})
         session.task_state.set_goal(user_text)
-        session.task_state.switch_agent(self._current_agent or "plan")
+        session.task_state.switch_agent(self._current_agent or "build")
         session.task_state.infer_stage_from_turn(user_text)
         if session.task_state.stage == "verify":
             session.task_state.update_verification("running", "Verification requested")

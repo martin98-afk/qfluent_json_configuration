@@ -226,9 +226,7 @@ class BuiltinTools(QObject):
         if len(summary) > limit:
             head = summary[: int(limit * 0.75)].rstrip()
             tail = summary[-int(limit * 0.15) :].lstrip()
-            summary = (
-                f"{head}\n\n[... 已省略 {len(summary) - len(head) - len(tail)} 个字符 ...]\n\n{tail}"
-            )
+            summary = f"{head}\n\n[... 已省略 {len(summary) - len(head) - len(tail)} 个字符 ...]\n\n{tail}"
         return ToolResult(True, content=summary)
 
     def set_memory_manager(self, memory_manager):
@@ -428,12 +426,20 @@ def get_builtin_tools_schema() -> List[Dict]:
                     "type": "object",
                     "properties": {
                         "path": {"type": "string", "description": "文件相对路径"},
-                        "offset": {"type": "integer", "description": "起始行号 (从1开始)", "default": 1},
-                        "limit": {"type": "integer", "description": "读取的行数", "default": 500}
+                        "offset": {
+                            "type": "integer",
+                            "description": "起始行号 (从1开始)",
+                            "default": 1,
+                        },
+                        "limit": {
+                            "type": "integer",
+                            "description": "读取的行数",
+                            "default": 500,
+                        },
                     },
-                    "required": ["path"]
-                }
-            }
+                    "required": ["path"],
+                },
+            },
         },
         {
             "type": "function",
@@ -444,11 +450,11 @@ def get_builtin_tools_schema() -> List[Dict]:
                     "type": "object",
                     "properties": {
                         "path": {"type": "string", "description": "文件相对路径"},
-                        "content": {"type": "string", "description": "完整的文件内容"}
+                        "content": {"type": "string", "description": "完整的文件内容"},
                     },
-                    "required": ["path", "content"]
-                }
-            }
+                    "required": ["path", "content"],
+                },
+            },
         },
         {
             "type": "function",
@@ -459,14 +465,23 @@ def get_builtin_tools_schema() -> List[Dict]:
                     "type": "object",
                     "properties": {
                         "path": {"type": "string", "description": "文件路径"},
-                        "oldString": {"type": "string", "description": "要被替换的原始精确文本块"},
-                        "newString": {"type": "string", "description": "替换后的新文本块"},
-                        "replaceAll": {"type": "boolean", "description": "如果存在多个匹配项，是否全部替换",
-                                       "default": False}
+                        "oldString": {
+                            "type": "string",
+                            "description": "要被替换的原始精确文本块",
+                        },
+                        "newString": {
+                            "type": "string",
+                            "description": "替换后的新文本块",
+                        },
+                        "replaceAll": {
+                            "type": "boolean",
+                            "description": "如果存在多个匹配项，是否全部替换",
+                            "default": False,
+                        },
                     },
-                    "required": ["path", "oldString", "newString"]
-                }
-            }
+                    "required": ["path", "oldString", "newString"],
+                },
+            },
         },
         {
             "type": "function",
@@ -477,12 +492,19 @@ def get_builtin_tools_schema() -> List[Dict]:
                     "type": "object",
                     "properties": {
                         "pattern": {"type": "string", "description": "正则表达式"},
-                        "path": {"type": "string", "description": "起始搜索目录 (默认当前目录)", "default": "."},
-                        "include": {"type": "string", "description": "文件过滤模式 (如 '*.py')"}
+                        "path": {
+                            "type": "string",
+                            "description": "起始搜索目录 (默认当前目录)",
+                            "default": ".",
+                        },
+                        "include": {
+                            "type": "string",
+                            "description": "文件过滤模式 (如 '*.py')",
+                        },
                     },
-                    "required": ["pattern"]
-                }
-            }
+                    "required": ["pattern"],
+                },
+            },
         },
         {
             "type": "function",
@@ -492,10 +514,14 @@ def get_builtin_tools_schema() -> List[Dict]:
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "path": {"type": "string", "description": "目录路径", "default": "."}
-                    }
-                }
-            }
+                        "path": {
+                            "type": "string",
+                            "description": "目录路径",
+                            "default": ".",
+                        }
+                    },
+                },
+            },
         },
         {
             "type": "function",
@@ -511,16 +537,22 @@ def get_builtin_tools_schema() -> List[Dict]:
                             "items": {
                                 "type": "object",
                                 "properties": {
-                                    "oldString": {"type": "string", "description": "旧文本"},
-                                    "newString": {"type": "string", "description": "新文本"}
+                                    "oldString": {
+                                        "type": "string",
+                                        "description": "旧文本",
+                                    },
+                                    "newString": {
+                                        "type": "string",
+                                        "description": "新文本",
+                                    },
                                 },
-                                "required": ["oldString", "newString"]
-                            }
-                        }
+                                "required": ["oldString", "newString"],
+                            },
+                        },
                     },
-                    "required": ["path", "edits"]
-                }
-            }
+                    "required": ["path", "edits"],
+                },
+            },
         },
         {
             "type": "function",
@@ -575,7 +607,10 @@ def get_builtin_tools_schema() -> List[Dict]:
                     "type": "object",
                     "properties": {
                         "url": {"type": "string", "description": "网页URL"},
-                        "format": {"type": "string", "description": "返回格式, 支持:html, text, markdown"},
+                        "format": {
+                            "type": "string",
+                            "description": "返回格式, 支持:html, text, markdown",
+                        },
                     },
                     "required": ["url"],
                 },
@@ -636,7 +671,10 @@ def get_builtin_tools_schema() -> List[Dict]:
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "limit": {"type": "integer", "description": "最多返回多少条记忆"},
+                        "limit": {
+                            "type": "integer",
+                            "description": "最多返回多少条记忆",
+                        },
                         "include_disabled": {
                             "type": "boolean",
                             "description": "是否包含已禁用的冲突记忆",
@@ -654,7 +692,10 @@ def get_builtin_tools_schema() -> List[Dict]:
                     "type": "object",
                     "properties": {
                         "query": {"type": "string", "description": "检索关键词"},
-                        "limit": {"type": "integer", "description": "最多返回多少条记忆"},
+                        "limit": {
+                            "type": "integer",
+                            "description": "最多返回多少条记忆",
+                        },
                         "include_disabled": {
                             "type": "boolean",
                             "description": "是否包含已禁用的冲突记忆",
@@ -739,7 +780,7 @@ def get_builtin_tools_schema() -> List[Dict]:
                         "agent": {
                             "type": "string",
                             "description": "子智能体名称",
-                            "enum": ["build", "plan", "skillful", "explore"],
+                            "enum": ["build"],
                         },
                         "description": {
                             "type": "string",

@@ -3,7 +3,7 @@ from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtGui import QKeyEvent, QKeySequence, QDragEnterEvent, QDropEvent
 from PyQt5.QtWidgets import QShortcut, QTextEdit
-from qfluentwidgets import FluentIcon, ComboBox, isDarkTheme
+from qfluentwidgets import FluentIcon, isDarkTheme
 from qfluentwidgets import TextEdit, TransparentToolButton
 
 
@@ -27,11 +27,6 @@ class SendableTextEdit(QTextEdit):
         self.setAcceptDrops(True)
         self.setMinimumHeight(96)
         self._apply_theme_style()
-
-        self._agent_combo = ComboBox(self)
-        self._agent_combo.setFixedSize(126, 28)
-        self._apply_combo_style()
-        self._agent_combo.currentTextChanged.connect(self._on_agent_changed)
 
         QTimer.singleShot(0, self._position_elements)
 
@@ -77,7 +72,7 @@ class SendableTextEdit(QTextEdit):
                 color: {text_color};
                 border: 1px solid {border_color};
                 border-radius: 18px;
-                padding: 14px 128px 18px 16px;
+                padding: 14px 48px 18px 16px;
                 selection-background-color: {selection_bg};
                 font-size: 14px;
             }}
@@ -109,63 +104,6 @@ class SendableTextEdit(QTextEdit):
             }}
         """)
 
-    def _apply_combo_style(self):
-        is_dark = isDarkTheme()
-        if is_dark:
-            combo_bg = "rgba(255, 255, 255, 0.05)"
-            combo_color = "#EAF2FF"
-            combo_border = "rgba(255, 255, 255, 0.08)"
-            combo_hover_bg = "rgba(255, 255, 255, 0.08)"
-            combo_hover_border = "rgba(103, 197, 255, 0.45)"
-            combo_arrow = "#9BB0D3"
-            dropdown_bg = "#192232"
-            dropdown_color = "#EAF2FF"
-            dropdown_selection = "#2B4C78"
-            dropdown_border = "#2B3850"
-        else:
-            combo_bg = "rgba(0, 0, 0, 0.05)"
-            combo_color = "#333333"
-            combo_border = "rgba(0, 0, 0, 0.08)"
-            combo_hover_bg = "rgba(0, 0, 0, 0.08)"
-            combo_hover_border = "rgba(0, 120, 212, 0.45)"
-            combo_arrow = "#666666"
-            dropdown_bg = "#ffffff"
-            dropdown_color = "#333333"
-            dropdown_selection = "#0078d4"
-            dropdown_border = "#cccccc"
-        self._agent_combo.setStyleSheet(f"""
-            ComboBox {{
-                background-color: {combo_bg};
-                color: {combo_color};
-                border: 1px solid {combo_border};
-                border-radius: 10px;
-                padding: 3px 10px;
-                font-size: 12px;
-            }}
-            ComboBox:hover {{
-                background-color: {combo_hover_bg};
-                border-color: {combo_hover_border};
-            }}
-            ComboBox::drop-down {{
-                border: none;
-                width: 16px;
-            }}
-            ComboBox::down-arrow {{
-                border-left: 4px solid transparent;
-                border-right: 4px solid transparent;
-                border-top: 5px solid {combo_arrow};
-                margin-right: 2px;
-            }}
-            ComboBox AbstractItemView {{
-                background-color: {dropdown_bg};
-                color: {dropdown_color};
-                selection-background-color: {dropdown_selection};
-                border: 1px solid {dropdown_border};
-                border-radius: 10px;
-                padding: 4px;
-            }}
-        """)
-
     def _apply_send_btn_style(self):
         is_dark = isDarkTheme()
         if is_dark:
@@ -193,9 +131,6 @@ class SendableTextEdit(QTextEdit):
                 color: {btn_disabled_color};
             }}
         """)
-
-    def _on_agent_changed(self, text: str):
-        self.agentChanged.emit(text)
 
     def _setup_keyboard_shortcuts(self):
         self._shortcut_clear = QShortcut(QKeySequence("Ctrl+L"), self)
@@ -251,24 +186,17 @@ class SendableTextEdit(QTextEdit):
         self._position_elements()
 
     def _position_elements(self):
-        """定位智能体选择框和发送按钮"""
-        if self._agent_combo and self.send_btn:
+        """定位发送按钮"""
+        if self.send_btn:
             btn_size = self.send_btn.size()
-            agent_width = self._agent_combo.width()
-
             send_btn_x = self.width() - btn_size.width() - 12
             send_btn_y = self.height() - btn_size.height() - 10
-
-            combo_x = send_btn_x - agent_width - 8
-            combo_y = send_btn_y + (btn_size.height() - self._agent_combo.height()) // 2
-
-            self._agent_combo.move(max(0, combo_x), max(0, combo_y))
             self.send_btn.move(max(0, send_btn_x), max(0, send_btn_y))
 
     def keyPressEvent(self, event: QKeyEvent):
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):
             if event.modifiers() & Qt.ShiftModifier:
-                super().keyPressEvent(event)  # 换行
+                super().keyPressEvent(event)
             else:
                 self._on_send_click()
                 event.accept()
