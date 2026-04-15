@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from typing import Dict, List, Optional
 from PyQt5.QtCore import QObject
@@ -9,6 +10,7 @@ from application.interfaces.llm_chatter.core.task_state import (
 
 class ChatSession:
     def __init__(self, name: str = None, messages: Optional[List[Dict]] = None):
+        self.session_id: str = uuid.uuid4().hex
         self.name = name or f"对话 {datetime.now().strftime('%m-%d %H:%M')}"
         self.messages: List[Dict[str, str]] = (
             messages.copy() if messages is not None else []
@@ -94,6 +96,7 @@ class ChatSession:
 
     def to_dict(self) -> Dict:
         return {
+            "session_id": self.session_id,
             "name": self.name,
             "messages": self.messages,
             "topic_summary": self.topic_summary,
@@ -120,6 +123,7 @@ class ChatSession:
     @classmethod
     def from_dict(cls, data: Dict) -> "ChatSession":
         session = cls(name=data.get("name"), messages=data.get("messages", []))
+        session.session_id = data.get("session_id") or session.session_id
         session.topic_summary = data.get("topic_summary", "")
         session.created_at = data.get(
             "created_at", datetime.now().strftime("%Y-%m-%d %H:%M:%S")

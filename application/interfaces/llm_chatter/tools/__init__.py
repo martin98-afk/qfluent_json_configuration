@@ -835,42 +835,5 @@ def get_builtin_tools_schema() -> List[Dict]:
                     "required": ["question"],
                 },
             },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "list_canvases",
-                "description": "列出所有在线可以执行的画布及其 webhook 触发器信息",
-                "parameters": {"type": "object", "properties": {}},
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "trigger_canvas",
-                "description": "通过 webhook 触发画布运行并等待结果返回",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "endpoint": {
-                            "type": "string",
-                            "description": "Webhook 端点（从 list_canvases 获取）",
-                        },
-                        "data": {
-                            "type": "object",
-                            "description": "传递给画布的数据（可选）",
-                        },
-                        "callback_url": {
-                            "type": "string",
-                            "description": "结果回调地址（可选）",
-                        },
-                        "timeout": {
-                            "type": "integer",
-                            "description": "等待结果超时时间，默认300秒",
-                        },
-                    },
-                    "required": ["endpoint"],
-                },
-            },
-        },
+        }
     ]
